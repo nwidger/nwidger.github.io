@@ -1,0 +1,10 @@
+---
+contentdir: "content"
+layoutdir: "layouts"
+publishdir: "public"
+builddrafts: false
+indexes:
+   category: "categories"
+   tag: "tags"
+baseurl: "http://nwidger.github.io/"
+...
