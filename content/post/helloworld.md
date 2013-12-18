@@ -20,4 +20,6 @@ tags: ["tag1","tag2"]
 
 {{% alert body="Danger!" type="danger" dismissable="true" %}}
 
+{{% glyphicon star %}} {{% label body="i am a label" type="success" %}}
+
 *Hello*

@@ -61,6 +61,10 @@ Danger!
 &lt;/div&gt;
 &lt;/p&gt;
 
+&lt;p&gt;&lt;span class=&#34;glyphicon glyphicon-star&#34;&gt;&lt;/span&gt;
+ &lt;span class=&#34;label label-success&#34;&gt;i am a label&lt;/span&gt;
+&lt;/p&gt;
+
 &lt;p&gt;&lt;em&gt;Hello&lt;/em&gt;&lt;/p&gt;
 </description>
     </item>
