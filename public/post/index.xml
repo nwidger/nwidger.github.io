@@ -14,9 +14,54 @@
       <pubDate>Tue, 17 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
       <guid>http://nwidger.github.io/post/helloworld</guid>
-      <description>&lt;h2&gt;Hello&lt;/h2&gt;
+      <description>&lt;h2&gt;Hellooo&lt;/h2&gt;
 
-&lt;p&gt;&lt;em&gt;World!&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;World!&lt;/em&gt; &lt;span class=&#34;badge&#34;&gt;42&lt;/span&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;well&#34;&gt;
+hi hi hi hi
+&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;well well-lg&#34;&gt;
+hi hi hi hi
+&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;well well-sm&#34;&gt;
+hi hi hi hi
+&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;panel panel-default&#34;&gt;
+  
+  &lt;div class=&#34;panel-body&#34;&gt;
+    test
+  &lt;/div&gt;
+  
+&lt;/div&gt;
+
+&lt;div class=&#34;panel panel-success&#34;&gt;
+  
+  &lt;div class=&#34;panel-heading&#34;&gt;this is my heading&lt;/div&gt;
+  
+  &lt;div class=&#34;panel-body&#34;&gt;
+    this is a test
+  &lt;/div&gt;
+  
+  &lt;div class=&#34;panel-footer&#34;&gt;this is my footer&lt;/div&gt;
+  
+&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;div class=&#34;alert alert-danger&#34;&gt;
+&lt;button type=&#34;button&#34; class=&#34;close&#34; data-dismiss=&#34;alert&#34; aria-hidden=&#34;true&#34;&gt;&amp;times;&lt;/button&gt;
+Danger!
+&lt;/div&gt;
+&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Hello&lt;/em&gt;&lt;/p&gt;
 </description>
     </item>
     

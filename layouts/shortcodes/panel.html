@@ -1,0 +1,11 @@
+<div class={{ if isset .Params "type" }}"panel panel-{{ index .Params "type" }}"{{ else }}"panel panel-default"{{ end }}>
+  {{ if isset .Params "heading" }}
+  <div class="panel-heading">{{ index .Params "heading" }}</div>
+  {{ end }}
+  <div class="panel-body">
+    {{ index .Params "body" }}
+  </div>
+  {{ if isset .Params "footer" }}
+  <div class="panel-footer">{{ index .Params "footer" }}</div>
+  {{ end }}
+</div>

@@ -1,0 +1,4 @@
+<div class={{ if isset .Params "type" }}"alert alert-{{ index .Params "type" }}"{{ else }}"alert alert-success"{{ end }}>
+{{ if isset .Params "dismissable" }}<button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>{{ end }}
+{{ index .Params "body" }}
+</div>

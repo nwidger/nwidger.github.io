@@ -1,0 +1,3 @@
+<div class={{ if isset .Params "type" }}"well well-{{ index .Params "type" }}"{{ else }}"well"{{ end }}>
+{{ index .Params "body" }}
+</div>

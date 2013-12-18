@@ -5,6 +5,19 @@ categories: ["deleteme"]
 tags: ["tag1","tag2"]
 ---
 
-## Hello
+## Hellooo
 
-*World!*
+*World!* {{% badge "42" %}}
+
+{{% well body="hi hi hi hi" %}}
+
+{{% well type="lg" body="hi hi hi hi" %}}
+
+{{% well type="sm" body="hi hi hi hi" %}}
+
+{{% panel body="test" %}}
+{{% panel body="this is a test" heading="this is my heading" footer="this is my footer" type="success" %}}
+
+{{% alert body="Danger!" type="danger" dismissable="true" %}}
+
+*Hello*
