@@ -7,4 +7,5 @@ indexes:
    category: "categories"
    tag: "tags"
 baseurl: "http://nwidger.github.io/public"
+title: "nwidger"
 ...
