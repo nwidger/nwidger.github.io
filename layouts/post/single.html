@@ -1,3 +1,7 @@
 {{ template "chrome/header.html" . }}
           {{ .Content }}
+          <ul class="pager">
+              <li class="previous"><a href="{{ .Prev }}">&larr; Previous</a></li>
+              <li class="next"><a href="{{ .Next }}">Next &rarr;</a></li>
+          </ul>
 {{ template "chrome/footer.html" . }}
