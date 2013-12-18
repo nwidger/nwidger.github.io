@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+      <title>Tag2 on  </title>
+    <link>http://nwidger.github.io/tags/tag2.xml</link>
+    <language>en-us</language>
+    <author>Niels Widger</author>
+    <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
+    <updated>2013-12-17 00:00:00 &#43;0000 UTC</updated>
+    
+    <item>
+      <title>Hello World!</title>
+      <link>http://nwidger.github.io/post/helloworld</link>
+      <pubDate>Tue, 17 Dec 2013 00:00:00 UTC</pubDate>
+      <author>Niels Widger</author>
+      <guid>http://nwidger.github.io/post/helloworld</guid>
+      <description>&lt;h2&gt;Hello&lt;/h2&gt;
+
+&lt;p&gt;&lt;em&gt;World!&lt;/em&gt;&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
