@@ -15,12 +15,20 @@ body {
     text-decoration: none;
 }
 
-.tocify, .tocify a {
-    color: #333;
+.tocify {
     background-color: #f5f5f5;
 }
 
-.tocify-item.active, .tocify-item.active a {
-    color: #c7254e;
+.tocify a {
+    color: #333;
+}
+
+.tocify-item.active  {
     background-color: #f9f2f4;
+    border-top: 1px solid #c7254e;
+    border-bottom: 1px solid #c7254e;
+}
+
+.tocify-item.active a {
+    color: #c7254e;
 }
