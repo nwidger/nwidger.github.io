@@ -10,3 +10,7 @@ body {
 .label a {
     color: white;
 }
+
+.label:hover a {
+    text-decoration: none;
+}

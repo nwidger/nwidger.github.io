@@ -16,7 +16,7 @@
             <div class="panel-body">
 	        Categories:
 	        {{ range .Params.categories }}
-                <span class="label label-info"><a href="{{ $baseurl }}/categories/{{ . | urlize }}">{{ . }}</a></span>
+                <span class="label label-primary"><a href="{{ $baseurl }}/categories/{{ . | urlize }}">{{ . }}</a></span>
 	        {{ end }}
             </div>
           </div>
