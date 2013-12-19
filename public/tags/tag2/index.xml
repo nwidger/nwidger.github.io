@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Tag2 on nwidger </title>
-    <link>file:///Users/nwidger/Projects/nwidger.github.io/tags/tag2.xml</link>
+    <link>http://nwidger.github.io/tags/tag2.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
@@ -10,10 +10,10 @@
     
     <item>
       <title>Hello World!</title>
-      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/helloworld</link>
+      <link>http://nwidger.github.io/post/helloworld</link>
       <pubDate>Tue, 17 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/helloworld</guid>
+      <guid>http://nwidger.github.io/post/helloworld</guid>
       <description>&lt;h2&gt;Hellooo&lt;/h2&gt;
 
 &lt;p&gt;&lt;em&gt;World!&lt;/em&gt; &lt;span class=&#34;badge&#34;&gt;42&lt;/span&gt;
