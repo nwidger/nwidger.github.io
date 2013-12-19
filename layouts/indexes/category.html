@@ -6,10 +6,9 @@
      <h1>Categories <small>{{ .Title }}</small></h1>
    </div>
 
-   <ul>
-    {{ range .Data.Pages }}
-        {{ .Render "summary"}}
-    {{ end }}
+   {{ range .Data.Pages }}
+       {{ .Render "summary"}}
+   {{ end }}
    </ul>
   </div>
 </section>
