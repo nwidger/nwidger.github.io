@@ -2,7 +2,10 @@
 
 <section id="main">
   <div>
-   <h1 id="title">{{ .Title }}</h1>
+   <div class="page-header">
+     <h1>Categories <small>{{ .Title }}</small></h1>
+   </div>
+
    <ul>
     {{ range .Data.Pages }}
         {{ .Render "summary"}}
