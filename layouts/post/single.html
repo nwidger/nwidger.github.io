@@ -6,10 +6,8 @@
 
   <div class="col-md-8">
           <div class="page-header">
-            <h1>Post <small>{{ .Title }}</small></h1>
+            <h1>{{ .Title }}</h1>
           </div>
-
-          
 
           {{ .Content }}
 
@@ -50,6 +48,6 @@
 <script>
   $(document).ready(function() {
          //Calls the tocify method on your HTML div.
-         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', theme: 'bootstrap' });
+         $("#toc").tocify({ selectors: 'h1,h2,h3,h4,h5,h6', theme: 'bootstrap' });
   });
 </script>
