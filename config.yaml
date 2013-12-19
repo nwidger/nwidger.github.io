@@ -1,11 +1,11 @@
 ---
 contentdir: "content"
 layoutdir: "layouts"
-publishdir: "public"
+publishdir: "blog"
 builddrafts: false
 indexes:
    category: "categories"
    tag: "tags"
-baseurl: "http://nwidger.github.io/public"
+baseurl: "http://nwidger.github.io/blog"
 title: "nwidger"
 ...
