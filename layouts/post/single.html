@@ -26,4 +26,5 @@
               {{ if .Next }}<li class="next"><a href="{{ .Next.RelPermalink }}">Next &rarr;</a></li>{{ end }}
           </ul>
 
+{{ template "chrome/disqus.html" . }}
 {{ template "chrome/footer.html" . }}
