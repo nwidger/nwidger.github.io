@@ -27,19 +27,19 @@ presentation.  Here&amp;rsquo;s how I put together my presentation.&lt;/p&gt;
 
 &lt;p&gt;First make a directory to hold your presentation file:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;mkdir presentation
+&lt;pre&gt;&lt;code class=&#34;bash&#34;&gt;mkdir presentation
 cd presentation
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;create a directory inside to hold any images you may use:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;mkdir images
+&lt;pre&gt;&lt;code class=&#34;bash&#34;&gt;mkdir images
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;create a &lt;code&gt;presentation.css&lt;/code&gt; file to store any custom CSS rules you may
 need:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;touch presentation.css
+&lt;pre&gt;&lt;code class=&#34;bash&#34;&gt;touch presentation.css
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;h2&gt;Install org-reveal&lt;/h2&gt;
@@ -50,8 +50,8 @@ to ensure I&amp;rsquo;m running the latest version.  To install &lt;code&gt;org&
 &lt;code&gt;org-reveal&lt;/code&gt;, first add MELPA to your package repositories in your
 Emacs init file:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;(package-initialize)
-
+&lt;pre&gt;&lt;code class=&#34;lisp&#34;&gt;(package-initialize)
+    
 (add-to-list &#39;package-archives
          &#39;(&amp;quot;melpa&amp;quot; . &amp;quot;http://melpa.milkbox.net/packages/&amp;quot;) t)
 &lt;/code&gt;&lt;/pre&gt;
@@ -64,7 +64,7 @@ then &lt;code&gt;M-x package-install ox-reveal RET&lt;/code&gt; to install both 
 &lt;p&gt;I added the following to my Emacs init file to ensure they both get
 loaded on startup (add this &lt;em&gt;after&lt;/em&gt; the call to &lt;code&gt;package-initialize&lt;/code&gt;):&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;(require &#39;org)
+&lt;pre&gt;&lt;code class=&#34;lisp&#34;&gt;(require &#39;org)
 (require &#39;ox-reveal)
 &lt;/code&gt;&lt;/pre&gt;
 
@@ -75,7 +75,7 @@ loaded on startup (add this &lt;em&gt;after&lt;/em&gt; the call to &lt;code&gt;p
 tarball and extract it to the &lt;code&gt;presentation&lt;/code&gt; directory.  Rename the
 resulting directory to &lt;code&gt;reveal.js&lt;/code&gt;:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
+&lt;pre&gt;&lt;code class=&#34;bash&#34;&gt;wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
 tar xfz 2.6.1.tar.gz
 mv reveal.js-2.6.1 reveal.js
 &lt;/code&gt;&lt;/pre&gt;
@@ -85,7 +85,7 @@ necessary dependencies (&lt;code&gt;reveal.js&lt;/code&gt; requires
 &lt;a href=&#34;http://nodejs.org/&#34;&gt;Node.js&lt;/a&gt; and
 &lt;a href=&#34;http://gruntjs.com/getting-started#installing-the-cli&#34;&gt;Grunt&lt;/a&gt;):&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;cd reveal.js
+&lt;pre&gt;&lt;code class=&#34;bash&#34;&gt;cd reveal.js
 sudo npm install
 &lt;/code&gt;&lt;/pre&gt;
 
@@ -98,7 +98,7 @@ if you run into any problems here.&lt;/p&gt;
 &lt;p&gt;Create a &lt;code&gt;presentation.org&lt;/code&gt; file and add the following header to the
 top:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;#    -*- mode: org -*-
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;#    -*- mode: org -*-
 #+OPTIONS: reveal_center:t reveal_progress:t reveal_history:t reveal_control:t
 #+OPTIONS: reveal_mathjax:t reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
 #+OPTIONS: reveal_width:1200 reveal_height:800
@@ -132,13 +132,13 @@ corresponds to a new slide.&lt;/p&gt;
 
 &lt;p&gt;Images can be inserted into your presentation like so:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[[./images/myimage.png]]
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;[[./images/myimage.png]]
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;you can use put &lt;code&gt;#+ATTR_HTML :attr1 attr1_value, :attr2 attr2_value&lt;/code&gt;
 above the image link to add custom HTML attributes, like so:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;#+ATTR_HTML: :height 200%, :width 200%
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;#+ATTR_HTML: :height 200%, :width 200%
 [[./images/myimage.png]]
 &lt;/code&gt;&lt;/pre&gt;
 
@@ -147,7 +147,7 @@ above the image link to add custom HTML attributes, like so:&lt;/p&gt;
 &lt;p&gt;&lt;code&gt;org&lt;/code&gt; tables are also exported properly, although I found they look
 better when stretched to fill the screen:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;#+ATTR_HTML: :width 100%
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;#+ATTR_HTML: :width 100%
 | column_title1  | column_title2 |
 |----------------+---------------|
 | a              | b             |
@@ -158,7 +158,7 @@ better when stretched to fill the screen:&lt;/p&gt;
 &lt;p&gt;I also added a few custom rules to &lt;code&gt;presentation.css&lt;/code&gt; to center the
 table text and put a border around the cells:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;.reveal table th, .reveal table td {
+&lt;pre&gt;&lt;code class=&#34;css&#34;&gt;.reveal table th, .reveal table td {
     text-align: center;
     border: 1px solid white;
 }
@@ -170,18 +170,16 @@ table text and put a border around the cells:&lt;/p&gt;
 you specify the language you get awesome syntax highlighting for free
 thanks to &lt;code&gt;org-babel&lt;/code&gt;:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;#+BEGIN_SRC java
-class MyClass extends Object {
+&lt;pre&gt;&lt;code class=&#34;java&#34;&gt;class MyClass extends Object {
 
 }
-#+END_SRC
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;I found that the code blocks weren&amp;rsquo;t displaying correctly due to the
 &lt;code&gt;pre&lt;/code&gt; blocks being set to &lt;code&gt;width: 90%&lt;/code&gt;.  I fixed this by adding the
 following rule to my &lt;code&gt;presentation.css&lt;/code&gt; file:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;.reveal pre {
+&lt;pre&gt;&lt;code class=&#34;css&#34;&gt;.reveal pre {
     width: 100%;
     border: none;
     box-shadow: none;

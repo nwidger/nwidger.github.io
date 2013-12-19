@@ -14,6 +14,7 @@
         <link href="http://nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/bootstrap-theme.min.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/highlightjs/default.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/style.css" rel="stylesheet"/>
 
 
@@ -71,19 +72,19 @@ presentation.  Here&rsquo;s how I put together my presentation.</p>
 
 <p>First make a directory to hold your presentation file:</p>
 
-<pre><code>mkdir presentation
+<pre><code class="bash">mkdir presentation
 cd presentation
 </code></pre>
 
 <p>create a directory inside to hold any images you may use:</p>
 
-<pre><code>mkdir images
+<pre><code class="bash">mkdir images
 </code></pre>
 
 <p>create a <code>presentation.css</code> file to store any custom CSS rules you may
 need:</p>
 
-<pre><code>touch presentation.css
+<pre><code class="bash">touch presentation.css
 </code></pre>
 
 <h2>Install org-reveal</h2>
@@ -94,8 +95,8 @@ to ensure I&rsquo;m running the latest version.  To install <code>org</code> and
 <code>org-reveal</code>, first add MELPA to your package repositories in your
 Emacs init file:</p>
 
-<pre><code>(package-initialize)
-
+<pre><code class="lisp">(package-initialize)
+    
 (add-to-list 'package-archives
          '(&quot;melpa&quot; . &quot;http://melpa.milkbox.net/packages/&quot;) t)
 </code></pre>
@@ -108,7 +109,7 @@ then <code>M-x package-install ox-reveal RET</code> to install both packages.</p
 <p>I added the following to my Emacs init file to ensure they both get
 loaded on startup (add this <em>after</em> the call to <code>package-initialize</code>):</p>
 
-<pre><code>(require 'org)
+<pre><code class="lisp">(require 'org)
 (require 'ox-reveal)
 </code></pre>
 
@@ -119,7 +120,7 @@ loaded on startup (add this <em>after</em> the call to <code>package-initialize<
 tarball and extract it to the <code>presentation</code> directory.  Rename the
 resulting directory to <code>reveal.js</code>:</p>
 
-<pre><code>wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
+<pre><code class="bash">wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
 tar xfz 2.6.1.tar.gz
 mv reveal.js-2.6.1 reveal.js
 </code></pre>
@@ -129,7 +130,7 @@ necessary dependencies (<code>reveal.js</code> requires
 <a href="http://nodejs.org/">Node.js</a> and
 <a href="http://gruntjs.com/getting-started#installing-the-cli">Grunt</a>):</p>
 
-<pre><code>cd reveal.js
+<pre><code class="bash">cd reveal.js
 sudo npm install
 </code></pre>
 
@@ -142,7 +143,7 @@ if you run into any problems here.</p>
 <p>Create a <code>presentation.org</code> file and add the following header to the
 top:</p>
 
-<pre><code>#    -*- mode: org -*-
+<pre><code class="no-highlight">#    -*- mode: org -*-
 #+OPTIONS: reveal_center:t reveal_progress:t reveal_history:t reveal_control:t
 #+OPTIONS: reveal_mathjax:t reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
 #+OPTIONS: reveal_width:1200 reveal_height:800
@@ -176,13 +177,13 @@ corresponds to a new slide.</p>
 
 <p>Images can be inserted into your presentation like so:</p>
 
-<pre><code>[[./images/myimage.png]]
+<pre><code class="no-highlight">[[./images/myimage.png]]
 </code></pre>
 
 <p>you can use put <code>#+ATTR_HTML :attr1 attr1_value, :attr2 attr2_value</code>
 above the image link to add custom HTML attributes, like so:</p>
 
-<pre><code>#+ATTR_HTML: :height 200%, :width 200%
+<pre><code class="no-highlight">#+ATTR_HTML: :height 200%, :width 200%
 [[./images/myimage.png]]
 </code></pre>
 
@@ -191,7 +192,7 @@ above the image link to add custom HTML attributes, like so:</p>
 <p><code>org</code> tables are also exported properly, although I found they look
 better when stretched to fill the screen:</p>
 
-<pre><code>#+ATTR_HTML: :width 100%
+<pre><code class="no-highlight">#+ATTR_HTML: :width 100%
 | column_title1  | column_title2 |
 |----------------+---------------|
 | a              | b             |
@@ -202,7 +203,7 @@ better when stretched to fill the screen:</p>
 <p>I also added a few custom rules to <code>presentation.css</code> to center the
 table text and put a border around the cells:</p>
 
-<pre><code>.reveal table th, .reveal table td {
+<pre><code class="css">.reveal table th, .reveal table td {
     text-align: center;
     border: 1px solid white;
 }
@@ -214,18 +215,16 @@ table text and put a border around the cells:</p>
 you specify the language you get awesome syntax highlighting for free
 thanks to <code>org-babel</code>:</p>
 
-<pre><code>#+BEGIN_SRC java
-class MyClass extends Object {
+<pre><code class="java">class MyClass extends Object {
 
 }
-#+END_SRC
 </code></pre>
 
 <p>I found that the code blocks weren&rsquo;t displaying correctly due to the
 <code>pre</code> blocks being set to <code>width: 90%</code>.  I fixed this by adding the
 following rule to my <code>presentation.css</code> file:</p>
 
-<pre><code>.reveal pre {
+<pre><code class="css">.reveal pre {
     width: 100%;
     border: none;
     box-shadow: none;
@@ -301,6 +300,7 @@ fullscreen or <code>Esc</code> to see the slide overview.</p>
     <script src="http://nwidger.github.io/blog/javascripts/jquery-ui.min.js"></script>
     <script src="http://nwidger.github.io/blog/javascripts/jquery.tocify.min.js"></script>
     <script src="http://nwidger.github.io/blog/javascripts/bootstrap.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/highlight.pack.js"></script>
   </body>
 </html>
 
@@ -311,5 +311,7 @@ fullscreen or <code>Esc</code> to see the slide overview.</p>
   $(document).ready(function() {
          
          $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', scrollTo: 50 });
+
+         hljs.initHighlightingOnLoad();
   });
 </script>

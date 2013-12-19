@@ -18,17 +18,23 @@ presentation.  Here's how I put together my presentation.
 
 First make a directory to hold your presentation file:
 
-    mkdir presentation
-	cd presentation
+``` bash
+mkdir presentation
+cd presentation
+```
 
 create a directory inside to hold any images you may use:
 
-	mkdir images
+``` bash
+mkdir images
+```
 
 create a `presentation.css` file to store any custom CSS rules you may
 need:
 
-    touch presentation.css
+``` bash
+touch presentation.css
+```
 
 ## Install org-reveal
 
@@ -38,10 +44,12 @@ to ensure I'm running the latest version.  To install `org` and
 `org-reveal`, first add MELPA to your package repositories in your
 Emacs init file:
 
-    (package-initialize)
+``` lisp
+(package-initialize)
     
-    (add-to-list 'package-archives
-    	     '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(add-to-list 'package-archives
+	     '("melpa" . "http://melpa.milkbox.net/packages/") t)
+```
 
 Evaluate that code with `eval-region` or just restart Emacs.  Make
 sure your package list is up to date by running `M-x
@@ -51,8 +59,10 @@ then `M-x package-install ox-reveal RET` to install both packages.
 I added the following to my Emacs init file to ensure they both get
 loaded on startup (add this *after* the call to `package-initialize`):
 
-    (require 'org)
-    (require 'ox-reveal)
+``` lisp
+(require 'org)
+(require 'ox-reveal)
+```
 
 ## Install reveal.js
 
@@ -61,17 +71,21 @@ Next download the latest
 tarball and extract it to the `presentation` directory.  Rename the
 resulting directory to `reveal.js`:
 
-    wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
-	tar xfz 2.6.1.tar.gz
-	mv reveal.js-2.6.1 reveal.js
+``` bash
+wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
+tar xfz 2.6.1.tar.gz
+mv reveal.js-2.6.1 reveal.js
+```
 
 Go into the `reveal.js` directory and use `npm` to download the
 necessary dependencies (`reveal.js` requires
 [Node.js](http://nodejs.org/) and
 [Grunt](http://gruntjs.com/getting-started#installing-the-cli)):
 
-    cd reveal.js
-    sudo npm install
+``` bash
+cd reveal.js
+sudo npm install
+```
 
 follow the
 [reveal.js install instructions](https://github.com/hakimel/reveal.js/#installation)
@@ -82,22 +96,24 @@ if you run into any problems here.
 Create a `presentation.org` file and add the following header to the
 top:
 
-    #    -*- mode: org -*-
-    #+OPTIONS: reveal_center:t reveal_progress:t reveal_history:t reveal_control:t
-    #+OPTIONS: reveal_mathjax:t reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
-    #+OPTIONS: reveal_width:1200 reveal_height:800
-    #+OPTIONS: toc:1
-    #+REVEAL_MARGIN: 0.2
-    #+REVEAL_MIN_SCALE: 0.5
-    #+REVEAL_MAX_SCALE: 2.5
-    #+REVEAL_TRANS: none
-    #+REVEAL_THEME: night
-    #+REVEAL_HLEVEL: 999
-    #+REVEAL_EXTRA_CSS: ./presentation.css
+``` no-highlight
+#    -*- mode: org -*-
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:t reveal_control:t
+#+OPTIONS: reveal_mathjax:t reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+#+OPTIONS: toc:1
+#+REVEAL_MARGIN: 0.2
+#+REVEAL_MIN_SCALE: 0.5
+#+REVEAL_MAX_SCALE: 2.5
+#+REVEAL_TRANS: none
+#+REVEAL_THEME: night
+#+REVEAL_HLEVEL: 999
+#+REVEAL_EXTRA_CSS: ./presentation.css
 
-    #+TITLE: My Title Goes Here
-    #+AUTHOR: Your Name Goes Here
-    #+EMAIL: your.email@goes.here
+#+TITLE: My Title Goes Here
+#+AUTHOR: Your Name Goes Here
+#+EMAIL: your.email@goes.here
+```
 
 You will probably want to play around with `REVEAL_THEME` (choices
 [here](https://github.com/hakimel/reveal.js/#theming)), `REVEAL_TRANS`
@@ -115,33 +131,41 @@ corresponds to a new slide.
 
 Images can be inserted into your presentation like so:
 
-    [[./images/myimage.png]]
+``` no-highlight
+[[./images/myimage.png]]
+```
 
 you can use put `#+ATTR_HTML :attr1 attr1_value, :attr2 attr2_value`
 above the image link to add custom HTML attributes, like so:
 
-    #+ATTR_HTML: :height 200%, :width 200%
-    [[./images/myimage.png]]
+``` no-highlight
+#+ATTR_HTML: :height 200%, :width 200%
+[[./images/myimage.png]]
+```
 
 ### Tables
 
 `org` tables are also exported properly, although I found they look
 better when stretched to fill the screen:
 
-    #+ATTR_HTML: :width 100%
-	| column_title1  | column_title2 |
-	|----------------+---------------|
-	| a              | b             |
-    | a              | b             |
-	| a              | b             |
+``` no-highlight
+#+ATTR_HTML: :width 100%
+| column_title1  | column_title2 |
+|----------------+---------------|
+| a              | b             |
+| a              | b             |
+| a              | b             |
+```
 
 I also added a few custom rules to `presentation.css` to center the
 table text and put a border around the cells:
 
-    .reveal table th, .reveal table td {
-        text-align: center;
-        border: 1px solid white;
-    }
+``` css
+.reveal table th, .reveal table td {
+    text-align: center;
+    border: 1px solid white;
+}
+```
 
 ### Code Fragments
 
@@ -149,21 +173,23 @@ You can insert source code between `#+BEGIN_SRC` and `#+END_SRC`.  If
 you specify the language you get awesome syntax highlighting for free
 thanks to `org-babel`:
 
-    #+BEGIN_SRC java
-    class MyClass extends Object {
-	
-	}
-    #+END_SRC
+``` java
+class MyClass extends Object {
+
+}
+```
 
 I found that the code blocks weren't displaying correctly due to the
 `pre` blocks being set to `width: 90%`.  I fixed this by adding the
 following rule to my `presentation.css` file:
 
-    .reveal pre {
-        width: 100%;
-        border: none;
-        box-shadow: none;
-    }
+``` css
+.reveal pre {
+    width: 100%;
+    border: none;
+    box-shadow: none;
+}
+```
 
 ### Speaker's notes
 
