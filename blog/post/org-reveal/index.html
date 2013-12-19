@@ -11,7 +11,8 @@
     <title>Making a reveal.js presentation with org-reveal</title>
     <link href="" rel="alternate" type="application/rss+xml" title="nwidger" />
 
-        <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
+        <link href="http://nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/bootstrap-theme.min.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/style.css" rel="stylesheet"/>
 
@@ -52,6 +53,8 @@
           <div class="page-header">
             <h1>Post <small>Making a reveal.js presentation with org-reveal</small></h1>
           </div>
+
+          <div id="toc"></div>
 
           <p>I&rsquo;m currently working on putting together the presentation for my
 thesis defense and like all other things I wanted to put it together
@@ -293,7 +296,17 @@ fullscreen or <code>Esc</code> to see the slide overview.</p>
     </div>
 
     <script src="http://nwidger.github.io/blog/javascripts/jquery.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery-ui.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery.tocify.min.js"></script>
     <script src="http://nwidger.github.io/blog/javascripts/bootstrap.min.js"></script>
   </body>
 </html>
 
+
+	  <script>
+            
+            $(function() {
+            
+            $("#toc").tocify();
+            });
+	  </script>

@@ -5,6 +5,8 @@
             <h1>Post <small>{{ .Title }}</small></h1>
           </div>
 
+          <div id="toc"></div>
+
           {{ .Content }}
 
           <p><small>{{ .Date }}</small></p>
@@ -38,3 +40,11 @@
 
 {{ template "chrome/disqus.html" . }}
 {{ template "chrome/footer.html" . }}
+
+	  <script>
+            //Executes your code when the DOM is ready.  Acts the same as $(document).ready().
+            $(function() {
+            //Calls the tocify method on your HTML div.
+            $("#toc").tocify();
+            });
+	  </script>
