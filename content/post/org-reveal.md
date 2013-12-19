@@ -30,6 +30,30 @@ need:
 
     touch presentation.css
 
+## Install org-reveal
+
+Obviously, `org-reveal` requires `org`.  `org` ships with Emacs by
+default, but I install it out of [MELPA](http://melpa.milkbox.net/#/)
+to ensure I'm running the latest version.  To install `org` and
+`org-reveal`, first add MELPA to your package repositories in your
+Emacs init file:
+
+    (package-initialize)
+    
+    (add-to-list 'package-archives
+    	     '("melpa" . "http://melpa.milkbox.net/packages/") t)
+
+Evaluate that code with `eval-region` or just restart Emacs.  Make
+sure your package list is up to date by running `M-x
+package-refresh-contents`, then run `M-x package-install org RET` and
+then `M-x package-install ox-reveal RET` to install both packages.
+
+I added the following to my Emacs init file to ensure they both get
+loaded on startup (add this *after* the call to `package-initialize`):
+
+    (require 'org)
+    (require 'ox-reveal)
+
 ## Install reveal.js
 
 Next download the latest
@@ -79,7 +103,7 @@ You will probably want to play around with `REVEAL_THEME` (choices
 [here](https://github.com/hakimel/reveal.js/#theming)), `REVEAL_TRANS`
 (the slide transition effect, must be one of `default`, `cube`,
 `page`, `concave`, `zoom`, `linear`, `fade` or `none`) and
-`REVEAL_HLEVEL`.  I set `REVEAL_HLEVEL`t to 999 so that all slides are
+`REVEAL_HLEVEL`.  I set `REVEAL_HLEVEL` to 999 so that all slides are
 horizontal, see [here](https://github.com/yjwen/org-reveal#the-hlevel)
 for details.  Note the `REVEAL_EXTRA_CSS` option which pulls in any
 extra CSS rules you've added to your `presentation.css` file.
@@ -101,8 +125,8 @@ above the image link to add custom HTML attributes, like so:
 
 ### Tables
 
-Tables are also exported properly, although I found they look better
-when stretched to fill the screen:
+`org` tables are also exported properly, although I found they look
+better when stretched to fill the screen:
 
     #+ATTR_HTML: :width 100%
 	| column_title1  | column_title2 |
@@ -151,6 +175,7 @@ the speaker's window to see your notes.
 
 Generate your presentation by running `C-c C-e R R`.  Once it's
 finished, there should be a new `presentation.html` file.  Just open
-it in your browser to view your presentation!
+it in your browser to view your presentation!  Press `f` to go
+fullscreen or `Esc` to see the slide overview.
 
 

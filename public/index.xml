@@ -42,6 +42,32 @@ need:&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt;touch presentation.css
 &lt;/code&gt;&lt;/pre&gt;
 
+&lt;h2&gt;Install org-reveal&lt;/h2&gt;
+
+&lt;p&gt;Obviously, &lt;code&gt;org-reveal&lt;/code&gt; requires &lt;code&gt;org&lt;/code&gt;.  &lt;code&gt;org&lt;/code&gt; ships with Emacs by
+default, but I install it out of &lt;a href=&#34;http://melpa.milkbox.net/#/&#34;&gt;MELPA&lt;/a&gt;
+to ensure I&amp;rsquo;m running the latest version.  To install &lt;code&gt;org&lt;/code&gt; and
+&lt;code&gt;org-reveal&lt;/code&gt;, first add MELPA to your package repositories in your
+Emacs init file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(package-initialize)
+
+(add-to-list &#39;package-archives
+         &#39;(&amp;quot;melpa&amp;quot; . &amp;quot;http://melpa.milkbox.net/packages/&amp;quot;) t)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Evaluate that code with &lt;code&gt;eval-region&lt;/code&gt; or just restart Emacs.  Make
+sure your package list is up to date by running &lt;code&gt;M-x
+package-refresh-contents&lt;/code&gt;, then run &lt;code&gt;M-x package-install org RET&lt;/code&gt; and
+then &lt;code&gt;M-x package-install ox-reveal RET&lt;/code&gt; to install both packages.&lt;/p&gt;
+
+&lt;p&gt;I added the following to my Emacs init file to ensure they both get
+loaded on startup (add this &lt;em&gt;after&lt;/em&gt; the call to &lt;code&gt;package-initialize&lt;/code&gt;):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(require &#39;org)
+(require &#39;ox-reveal)
+&lt;/code&gt;&lt;/pre&gt;
+
 &lt;h2&gt;Install reveal.js&lt;/h2&gt;
 
 &lt;p&gt;Next download the latest
@@ -85,7 +111,7 @@ top:&lt;/p&gt;
 #+REVEAL_HLEVEL: 999
 #+REVEAL_EXTRA_CSS: ./presentation.css
 
-#+TITLE: My Title Goes Here 
+#+TITLE: My Title Goes Here
 #+AUTHOR: Your Name Goes Here
 #+EMAIL: your.email@goes.here
 &lt;/code&gt;&lt;/pre&gt;
@@ -94,7 +120,7 @@ top:&lt;/p&gt;
 &lt;a href=&#34;https://github.com/hakimel/reveal.js/#theming&#34;&gt;here&lt;/a&gt;), &lt;code&gt;REVEAL_TRANS&lt;/code&gt;
 (the slide transition effect, must be one of &lt;code&gt;default&lt;/code&gt;, &lt;code&gt;cube&lt;/code&gt;,
 &lt;code&gt;page&lt;/code&gt;, &lt;code&gt;concave&lt;/code&gt;, &lt;code&gt;zoom&lt;/code&gt;, &lt;code&gt;linear&lt;/code&gt;, &lt;code&gt;fade&lt;/code&gt; or &lt;code&gt;none&lt;/code&gt;) and
-&lt;code&gt;REVEAL_HLEVEL&lt;/code&gt;.  I set &lt;code&gt;REVEAL_HLEVEL&lt;/code&gt;t to 999 so that all slides are
+&lt;code&gt;REVEAL_HLEVEL&lt;/code&gt;.  I set &lt;code&gt;REVEAL_HLEVEL&lt;/code&gt; to 999 so that all slides are
 horizontal, see &lt;a href=&#34;https://github.com/yjwen/org-reveal#the-hlevel&#34;&gt;here&lt;/a&gt;
 for details.  Note the &lt;code&gt;REVEAL_EXTRA_CSS&lt;/code&gt; option which pulls in any
 extra CSS rules you&amp;rsquo;ve added to your &lt;code&gt;presentation.css&lt;/code&gt; file.&lt;/p&gt;
@@ -118,8 +144,8 @@ above the image link to add custom HTML attributes, like so:&lt;/p&gt;
 
 &lt;h3&gt;Tables&lt;/h3&gt;
 
-&lt;p&gt;Tables are also exported properly, although I found they look better
-when stretched to fill the screen:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;org&lt;/code&gt; tables are also exported properly, although I found they look
+better when stretched to fill the screen:&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;#+ATTR_HTML: :width 100%
 | column_title1  | column_title2 |
@@ -172,7 +198,8 @@ the speaker&amp;rsquo;s window to see your notes.&lt;/p&gt;
 
 &lt;p&gt;Generate your presentation by running &lt;code&gt;C-c C-e R R&lt;/code&gt;.  Once it&amp;rsquo;s
 finished, there should be a new &lt;code&gt;presentation.html&lt;/code&gt; file.  Just open
-it in your browser to view your presentation!&lt;/p&gt;
+it in your browser to view your presentation!  Press &lt;code&gt;f&lt;/code&gt; to go
+fullscreen or &lt;code&gt;Esc&lt;/code&gt; to see the slide overview.&lt;/p&gt;
 </description>
     </item>
     
