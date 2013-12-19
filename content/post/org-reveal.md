@@ -71,7 +71,7 @@ top:
     #+REVEAL_HLEVEL: 999
     #+REVEAL_EXTRA_CSS: ./presentation.css
 
-    #+TITLE: My Title Goes Here 
+    #+TITLE: My Title Goes Here
     #+AUTHOR: Your Name Goes Here
     #+EMAIL: your.email@goes.here
 
