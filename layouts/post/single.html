@@ -1,11 +1,15 @@
 {{ template "chrome/header.html" . }}
 {{ $baseurl := .Site.BaseUrl }}
 
+<div class="row">
+  <div class="col-md-4"><div id="toc"></div></div>
+
+  <div class="col-md-8">
           <div class="page-header">
             <h1>Post <small>{{ .Title }}</small></h1>
           </div>
 
-          <div id="toc"></div>
+          
 
           {{ .Content }}
 
@@ -38,13 +42,14 @@
               {{ if .Next }}<li class="next"><a href="{{ .Next.RelPermalink }}">Next &rarr;</a></li>{{ end }}
           </ul>
 
-{{ template "chrome/disqus.html" . }}
-{{ template "chrome/footer.html" . }}
+	  {{ template "chrome/disqus.html" . }}
+	  {{ template "chrome/footer.html" . }}
+  </div>
+</div>
 
-	  <script>
-            //Executes your code when the DOM is ready.  Acts the same as $(document).ready().
-            $(function() {
-            //Calls the tocify method on your HTML div.
-            $("#toc").tocify();
-            });
-	  </script>
+<script>
+  $(document).ready(function() {
+         //Calls the tocify method on your HTML div.
+         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', theme: 'bootstrap' });
+  });
+</script>
