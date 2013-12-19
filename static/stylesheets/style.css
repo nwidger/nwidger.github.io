@@ -14,3 +14,10 @@ body {
 .label:hover a {
     text-decoration: none;
 }
+
+#toc {
+    position: fixed;
+    top: 80px;
+    left: -20px;
+    width: 150px;
+}
