@@ -6,11 +6,9 @@
      <h1>Tags <small>{{ .Title }}</small></h1>
    </div>
 
-   <ul>
-    {{ range .Data.Pages }}
-        {{ .Render "summary"}}
-    {{ end }}
-   </ul>
+   {{ range .Data.Pages }}
+       {{ .Render "summary"}}
+   {{ end }}
   </div>
 </section>
 
