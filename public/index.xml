@@ -9,63 +9,170 @@
     <updated>0001-01-01 00:00:00 &#43;0000 UTC</updated>
     
     <item>
-      <title>Hello World!</title>
-      <link>http://nwidger.github.io/post/helloworld</link>
-      <pubDate>Tue, 17 Dec 2013 00:00:00 UTC</pubDate>
+      <title>Making a reveal.js presentation with org-reveal</title>
+      <link>http://nwidger.github.io/post/org-reveal</link>
+      <pubDate>Thu, 19 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>http://nwidger.github.io/post/helloworld</guid>
-      <description>&lt;h2&gt;Hellooo&lt;/h2&gt;
+      <guid>http://nwidger.github.io/post/org-reveal</guid>
+      <description>&lt;p&gt;I&amp;rsquo;m currently working on putting together the presentation for my
+thesis defense and like all other things I wanted to put it together
+inside Emacs.  I had heard of
+&lt;a href=&#34;https://github.com/hakimel/reveal.js/&#34;&gt;reveal.js&lt;/a&gt; and wanted to give
+it a shot for a while, and fortunately someone made
+&lt;a href=&#34;https://github.com/yjwen/org-reveal&#34;&gt;org-reveal&lt;/a&gt; which allows
+exporting an &lt;a href=&#34;http://orgmode.org&#34;&gt;org-mode&lt;/a&gt; file to a reveal.js
+presentation.  Here&amp;rsquo;s how I put together my presentation.&lt;/p&gt;
 
-&lt;p&gt;&lt;em&gt;World!&lt;/em&gt; &lt;span class=&#34;badge&#34;&gt;42&lt;/span&gt;
-&lt;/p&gt;
+&lt;h2&gt;Create your presentation directory&lt;/h2&gt;
 
-&lt;p&gt;&lt;div class=&#34;well&#34;&gt;
-hi hi hi hi
-&lt;/div&gt;
-&lt;/p&gt;
+&lt;p&gt;First make a directory to hold your presentation file:&lt;/p&gt;
 
-&lt;p&gt;&lt;div class=&#34;well well-lg&#34;&gt;
-hi hi hi hi
-&lt;/div&gt;
-&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;mkdir presentation
+cd presentation
+&lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;div class=&#34;well well-sm&#34;&gt;
-hi hi hi hi
-&lt;/div&gt;
-&lt;/p&gt;
+&lt;p&gt;create a directory inside to hold any images you may use:&lt;/p&gt;
 
-&lt;p&gt;&lt;div class=&#34;panel panel-default&#34;&gt;
-  
-  &lt;div class=&#34;panel-body&#34;&gt;
-    test
-  &lt;/div&gt;
-  
-&lt;/div&gt;
+&lt;pre&gt;&lt;code&gt;mkdir images
+&lt;/code&gt;&lt;/pre&gt;
 
-&lt;div class=&#34;panel panel-success&#34;&gt;
-  
-  &lt;div class=&#34;panel-heading&#34;&gt;this is my heading&lt;/div&gt;
-  
-  &lt;div class=&#34;panel-body&#34;&gt;
-    this is a test
-  &lt;/div&gt;
-  
-  &lt;div class=&#34;panel-footer&#34;&gt;this is my footer&lt;/div&gt;
-  
-&lt;/div&gt;
-&lt;/p&gt;
+&lt;p&gt;create a &lt;code&gt;presentation.css&lt;/code&gt; file to store any custom CSS rules you may
+need:&lt;/p&gt;
 
-&lt;p&gt;&lt;div class=&#34;alert alert-danger&#34;&gt;
-&lt;button type=&#34;button&#34; class=&#34;close&#34; data-dismiss=&#34;alert&#34; aria-hidden=&#34;true&#34;&gt;&amp;times;&lt;/button&gt;
-Danger!
-&lt;/div&gt;
-&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;touch presentation.css
+&lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;&lt;span class=&#34;glyphicon glyphicon-star&#34;&gt;&lt;/span&gt;
- &lt;span class=&#34;label label-success&#34;&gt;i am a label&lt;/span&gt;
-&lt;/p&gt;
+&lt;h2&gt;Install reveal.js&lt;/h2&gt;
 
-&lt;p&gt;&lt;em&gt;Hello&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Next download the latest
+&lt;a href=&#34;https://github.com/hakimel/reveal.js/releases&#34;&gt;reveal.js release&lt;/a&gt;
+tarball and extract it to the &lt;code&gt;presentation&lt;/code&gt; directory.  Rename the
+resulting directory to &lt;code&gt;reveal.js&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;wget https://github.com/hakimel/reveal.js/archive/2.6.1.tar.gz
+tar xfz 2.6.1.tar.gz
+mv reveal.js-2.6.1 reveal.js
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Go into the &lt;code&gt;reveal.js&lt;/code&gt; directory and use &lt;code&gt;npm&lt;/code&gt; to download the
+necessary dependencies (&lt;code&gt;reveal.js&lt;/code&gt; requires
+&lt;a href=&#34;http://nodejs.org/&#34;&gt;Node.js&lt;/a&gt; and
+&lt;a href=&#34;http://gruntjs.com/getting-started#installing-the-cli&#34;&gt;Grunt&lt;/a&gt;):&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;cd reveal.js
+sudo npm install
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;follow the
+&lt;a href=&#34;https://github.com/hakimel/reveal.js/#installation&#34;&gt;reveal.js install instructions&lt;/a&gt;
+if you run into any problems here.&lt;/p&gt;
+
+&lt;h2&gt;Create presentation file&lt;/h2&gt;
+
+&lt;p&gt;Create a &lt;code&gt;presentation.org&lt;/code&gt; file and add the following header to the
+top:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#    -*- mode: org -*-
+#+OPTIONS: reveal_center:t reveal_progress:t reveal_history:t reveal_control:t
+#+OPTIONS: reveal_mathjax:t reveal_rolling_links:t reveal_keyboard:t reveal_overview:t num:nil
+#+OPTIONS: reveal_width:1200 reveal_height:800
+#+OPTIONS: toc:1
+#+REVEAL_MARGIN: 0.2
+#+REVEAL_MIN_SCALE: 0.5
+#+REVEAL_MAX_SCALE: 2.5
+#+REVEAL_TRANS: none
+#+REVEAL_THEME: night
+#+REVEAL_HLEVEL: 999
+#+REVEAL_EXTRA_CSS: ./presentation.css
+
+#+TITLE: My Title Goes Here 
+#+AUTHOR: Your Name Goes Here
+#+EMAIL: your.email@goes.here
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You will probably want to play around with &lt;code&gt;REVEAL_THEME&lt;/code&gt; (choices
+&lt;a href=&#34;https://github.com/hakimel/reveal.js/#theming&#34;&gt;here&lt;/a&gt;), &lt;code&gt;REVEAL_TRANS&lt;/code&gt;
+(the slide transition effect, must be one of &lt;code&gt;default&lt;/code&gt;, &lt;code&gt;cube&lt;/code&gt;,
+&lt;code&gt;page&lt;/code&gt;, &lt;code&gt;concave&lt;/code&gt;, &lt;code&gt;zoom&lt;/code&gt;, &lt;code&gt;linear&lt;/code&gt;, &lt;code&gt;fade&lt;/code&gt; or &lt;code&gt;none&lt;/code&gt;) and
+&lt;code&gt;REVEAL_HLEVEL&lt;/code&gt;.  I set &lt;code&gt;REVEAL_HLEVEL&lt;/code&gt;t to 999 so that all slides are
+horizontal, see &lt;a href=&#34;https://github.com/yjwen/org-reveal#the-hlevel&#34;&gt;here&lt;/a&gt;
+for details.  Note the &lt;code&gt;REVEAL_EXTRA_CSS&lt;/code&gt; option which pulls in any
+extra CSS rules you&amp;rsquo;ve added to your &lt;code&gt;presentation.css&lt;/code&gt; file.&lt;/p&gt;
+
+&lt;p&gt;Now you can start creating your presentation.  Each heading
+corresponds to a new slide.&lt;/p&gt;
+
+&lt;h3&gt;Images&lt;/h3&gt;
+
+&lt;p&gt;Images can be inserted into your presentation like so:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[[./images/myimage.png]]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;you can use put &lt;code&gt;#+ATTR_HTML :attr1 attr1_value, :attr2 attr2_value&lt;/code&gt;
+above the image link to add custom HTML attributes, like so:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#+ATTR_HTML: :height 200%, :width 200%
+[[./images/myimage.png]]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;Tables&lt;/h3&gt;
+
+&lt;p&gt;Tables are also exported properly, although I found they look better
+when stretched to fill the screen:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#+ATTR_HTML: :width 100%
+| column_title1  | column_title2 |
+|----------------+---------------|
+| a              | b             |
+| a              | b             |
+| a              | b             |
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I also added a few custom rules to &lt;code&gt;presentation.css&lt;/code&gt; to center the
+table text and put a border around the cells:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;.reveal table th, .reveal table td {
+    text-align: center;
+    border: 1px solid white;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;Code Fragments&lt;/h3&gt;
+
+&lt;p&gt;You can insert source code between &lt;code&gt;#+BEGIN_SRC&lt;/code&gt; and &lt;code&gt;#+END_SRC&lt;/code&gt;.  If
+you specify the language you get awesome syntax highlighting for free
+thanks to &lt;code&gt;org-babel&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#+BEGIN_SRC java
+class MyClass extends Object {
+
+}
+#+END_SRC
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I found that the code blocks weren&amp;rsquo;t displaying correctly due to the
+&lt;code&gt;pre&lt;/code&gt; blocks being set to &lt;code&gt;width: 90%&lt;/code&gt;.  I fixed this by adding the
+following rule to my &lt;code&gt;presentation.css&lt;/code&gt; file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;.reveal pre {
+    width: 100%;
+    border: none;
+    box-shadow: none;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;Speaker&amp;rsquo;s notes&lt;/h3&gt;
+
+&lt;p&gt;You can add speaker&amp;rsquo;s notes to each slide between &lt;code&gt;#+BEGIN_NOTES&lt;/code&gt; and
+&lt;code&gt;#+END_NOTES&lt;/code&gt;.  While viewing your presentation, press &lt;code&gt;s&lt;/code&gt; to pull up
+the speaker&amp;rsquo;s window to see your notes.&lt;/p&gt;
+
+&lt;h2&gt;Generate the presentation&lt;/h2&gt;
+
+&lt;p&gt;Generate your presentation by running &lt;code&gt;C-c C-e R R&lt;/code&gt;.  Once it&amp;rsquo;s
+finished, there should be a new &lt;code&gt;presentation.html&lt;/code&gt; file.  Just open
+it in your browser to view your presentation!&lt;/p&gt;
 </description>
     </item>
     

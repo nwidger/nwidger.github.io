@@ -1,10 +1,15 @@
 {{ template "chrome/header.html" . }}
 {{ $baseurl := .Site.BaseUrl }}
 
+          <div class="page-header">
+            <h1>Post <small>{{ .Title }}</small></h1>
+          </div>
+
           {{ .Content }}
 
           <p><small>{{ .Date }}</small></p>
 
+	  {{ if .Params.tags }}
           <div class="panel panel-default">
             <div class="panel-body">
 	        Tags: 
@@ -13,7 +18,9 @@
 	        {{ end }}
             </div>
           </div>
+	  {{ end }}
 
+	  {{ if .Params.categories }}
           <div class="panel panel-default">
             <div class="panel-body">
 	        Categories:
@@ -22,6 +29,7 @@
 	        {{ end }}
             </div>
           </div>
+	  {{ end }}
 
           <ul class="pager">
               {{ if .Prev }}<li class="previous"><a href="{{ .Prev.RelPermalink }}">&larr; Previous</a></li>{{ end }}
