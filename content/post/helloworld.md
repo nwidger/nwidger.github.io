@@ -1,5 +1,6 @@
 ---
 title: "Hello World!"
+description: "Playing around with Markdown and Hugo shortcodes"
 date: "2013-12-17"
 categories: ["deleteme"]
 tags: ["tag1","tag2"]
