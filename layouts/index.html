@@ -1,4 +1,5 @@
 {{ template "chrome/header.html" . }}
+{{ $baseurl := .Site.BaseUrl }}
 
 <section id="main">
   <div>
@@ -6,9 +7,30 @@
       <h1>Posts <small>Recent</small></h1>
     </div>
 
-    {{ range first 10 .Data.Pages }}
+    {{ range first 10 .Site.Recent }}
         {{ .Render "summary"}}
     {{ end }}
+
+    {{ if .Site.Indexes.tags.IndexArray }}
+    <div class="page-header">
+      <h1>Tags</h1>
+    </div>
+
+    {{ range $key, $value := .Site.Indexes.tags.IndexArray }}
+    <span class="label label-primary"><a href="{{ $baseurl }}/tags/{{ $value.Name }}">{{ $value.Name }}</a></span>
+    {{ end }}
+    {{ end }}
+
+    {{ if .Site.Indexes.categories.IndexArray }}
+    <div class="page-header">
+      <h1>Categories</h1>
+    </div>
+
+    {{ range $key, $value := .Site.Indexes.categories.IndexArray }}
+    <span class="label label-primary"><a href="{{ $baseurl }}/categories/{{ $value.Name }}">{{ $value.Name }}</a></span>
+    {{ end }}
+    {{ end }}
+
   </div>
 </section>
 
