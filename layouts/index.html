@@ -17,7 +17,7 @@
     </div>
 
     {{ range $key, $value := .Site.Indexes.tags.IndexArray }}
-    <span class="label label-primary"><a href="{{ $baseurl }}/tags/{{ $value.Name }}">{{ $value.Name }}</a></span>
+    <span class="label label-primary"><a href="{{ $baseurl }}/tags/{{ $value.Name }}">{{ $value.Name }}</a></span> <span class="badge">{{ $value.Count }}</span>
     {{ end }}
     {{ end }}
 
@@ -27,7 +27,7 @@
     </div>
 
     {{ range $key, $value := .Site.Indexes.categories.IndexArray }}
-    <span class="label label-primary"><a href="{{ $baseurl }}/categories/{{ $value.Name }}">{{ $value.Name }}</a></span>
+    <span class="label label-primary"><a href="{{ $baseurl }}/categories/{{ $value.Name }}">{{ $value.Name }}</a></span> <span class="badge">{{ $value.Count }}</span>
     {{ end }}
     {{ end }}
 
