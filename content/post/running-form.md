@@ -62,7 +62,7 @@ I've laid out my form focuses by body part, from the feet to the head.
   muscles.
 
 * Allow a slight rotation in your hip during your stride, but keep the
-  rotation isolated to your hips and not your upper body.
+  rotation isolated to your hips/back and not your upper body.
 
 ### Back
 
@@ -82,7 +82,7 @@ I've laid out my form focuses by body part, from the feet to the head.
 
 * Allow your arms to hang loosely from their sockets.
 
-* Bend your arms at 90 degree angles
+* Bend your arms at 45-90 degree angles
 
 * Keep your arms tucked in at your sides
 
