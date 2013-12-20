@@ -8,8 +8,8 @@
     <meta name="author" content="Niels Widger">
     <link rel="shortcut icon" href="http://nwidger.github.io/blog/images/alert.red.gif">
 
-    <title>nwidger</title>
-    <link href="http://nwidger.github.io/index.xml" rel="alternate" type="application/rss+xml" title="nwidger" />
+    <title>Running form focus points</title>
+    <link href="" rel="alternate" type="application/rss+xml" title="nwidger" />
 
         <link href="http://nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
     <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
@@ -51,53 +51,65 @@
 
 
 
-<section id="main">
-  <div>
-    <div class="page-header">
-      <h1>Posts <small>Recent</small></h1>
-    </div>
+<div class="row">
+  <div class="col-md-4"><div id="toc"></div></div>
 
-    
-        <div class="panel panel-default">
-  <div class="panel-heading"><h3 class="panel-title"><a href='http://nwidger.github.io/blog/post/running-form-focuses/'>Running form focuses</a></h3></div>
-  <div class="panel-body">A list of form focuses I try to concentrate on during my runs</div>
-  <div class="panel-footer">Fri, Dec 20, 2013</div>
-</div>
+  <div class="col-md-8">
+          <div class="page-header">
+            <h1>Running form focus points</h1>
+          </div>
 
-    
-        <div class="panel panel-default">
-  <div class="panel-heading"><h3 class="panel-title"><a href='http://nwidger.github.io/blog/post/running-form/'>Running form focus points</a></h3></div>
-  <div class="panel-body">Form to focus on while running</div>
-  <div class="panel-footer">Fri, Dec 20, 2013</div>
-</div>
+          
 
-    
-        <div class="panel panel-default">
-  <div class="panel-heading"><h3 class="panel-title"><a href='http://nwidger.github.io/blog/post/making-a-reveal.js-presentation-with-org-reveal/'>Making a reveal.js presentation with org-reveal</a></h3></div>
-  <div class="panel-body">Using org-reveal to make reveal.js presentations</div>
-  <div class="panel-footer">Thu, Dec 19, 2013</div>
-</div>
+          <p><small>Fri, Dec 20, 2013</small></p>
 
-    
+	  
 
-    
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Categories:
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/categories/running">running</a></span>
+	        
+            </div>
+          </div>
+	  
 
-    
-    <div class="page-header">
-      <h1>Categories</h1>
-    </div>
+          <ul class="pager">
+              <li class="previous"><a href="http://nwidger.github.io/blog/post/running-form-focuses/">&larr; Previous</a></li>
+              <li class="next"><a href="http://nwidger.github.io/blog/post/making-a-reveal.js-presentation-with-org-reveal/">Next &rarr;</a></li>
+          </ul>
 
-    
-    <span class="label label-primary"><a href="http://nwidger.github.io/blog/categories/running">running</a></span> <span class="badge">2</span>
-    
-    <span class="label label-primary"><a href="http://nwidger.github.io/blog/categories/emacs">emacs</a></span> <span class="badge">1</span>
-    
-    
+	  <div id="disqus_thread"></div>
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
 
-  </div>
-</section>
+   
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
 
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
 
+   
+  (function () {
+  var s = document.createElement('script'); s.async = true;
+  s.type = 'text/javascript';
+  s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+  (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+  }());
+</script>
+
+	  
     </div>
 
     <script src="http://nwidger.github.io/blog/javascripts/jquery.js"></script>
@@ -108,3 +120,14 @@
   </body>
 </html>
 
+  </div>
+</div>
+
+<script>
+  $(function() {
+         
+         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', scrollTo: 50, hashGenerator: 'pretty' });
+
+         hljs.initHighlightingOnLoad();
+  });
+</script>
