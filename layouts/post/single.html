@@ -11,7 +11,7 @@
 
           {{ .Content }}
 
-          <p><small>{{ .Date }}</small></p>
+          <p><small>{{ .Date.Format "Mon, Jan 2, 2006" }}</small></p>
 
 	  {{ if .Params.tags }}
           <div class="panel panel-default">
