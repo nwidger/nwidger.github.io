@@ -3,6 +3,7 @@ title: "Making a reveal.js presentation with org-reveal"
 description: "Using org-reveal to make reveal.js presentations"
 date: "2013-12-19"
 categories: ["emacs"]
+slug: "making-a-reveal.js-presentation-with-org-reveal"
 ---
 
 I'm currently working on putting together the presentation for my
