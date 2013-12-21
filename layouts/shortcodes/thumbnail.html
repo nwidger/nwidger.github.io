@@ -1,5 +1,5 @@
 <div class="thumbnail">
-  <img src='{{ index .Params "src" }}'>
+  <a href='{{ index .Params "src" }}' data-lightbox='{{ index .Params "name" }}' title='{{ if isset .Params "caption" }}{{ index .Params "caption" }}{{ else }}pictures{{ end }}'><img src='{{ index .Params "src" }}'></a>
 
   {{ if isset .Params "caption" }}
   <div class="caption">

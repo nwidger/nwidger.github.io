@@ -18,7 +18,18 @@
 I&amp;rsquo;ve made them for various events the last few years and people seem
 to like them.&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&#39;/images/neeman-marcus-cookies.jpg&#39; data-lightbox=&#39;cookies&#39; title=&#39;Om nom nom&#39;&gt;&lt;img src=&#39;/images/neeman-marcus-cookies.jpg&#39;&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;div class=&#34;thumbnail&#34;&gt;
+  &lt;a href=&#39;/images/neeman-marcus-cookies.jpg&#39; data-lightbox=&#39;cookies&#39; title=&#39;Om nom nom&#39;&gt;&lt;img src=&#39;/images/neeman-marcus-cookies.jpg&#39;&gt;&lt;/a&gt;
+
+  
+  &lt;div class=&#34;caption&#34;&gt;
+    &lt;p&gt;
+      Om nom nom
+    &lt;/p&gt;
+  &lt;/div&gt;
+  
+
+&lt;p&gt;&lt;/div&gt;&lt;/p&gt;
 
 &lt;h2&gt;Ingredients&lt;/h2&gt;
 

@@ -9,7 +9,7 @@ I got this recipe from my father who used to make these all the time.
 I've made them for various events the last few years and people seem
 to like them.
 
-{{% lightbox href="/images/neeman-marcus-cookies.jpg" name="cookies" title="Om nom nom" %}}
+{{% thumbnail src="/images/neeman-marcus-cookies.jpg" name="cookies" caption="Om nom nom" %}}
 
 ## Ingredients
 
