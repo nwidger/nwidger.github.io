@@ -9,22 +9,24 @@ I got this recipe from my father who used to make these all the time.
 I've made them for various events the last few years and people seem
 to like them.
 
-{{% thumbnail src="/images/neeman-markus-cookies.jpg" caption="Om nom nom" %}}
+{{% thumbnail src="/blog/images/neeman-markus-cookies.jpg" caption="Om nom nom" %}}
 
 ## Ingredients
 
-    4 eggs - beaten \ whip together by
-	1c oil          / drizzling in slowly
-	2c sugar
-	2c brown sugar
-	5c oats (rolled or ground)
-	4c flour
-	2 tsp baking soda
-	2 tsp baking powder
-	1 1/2 tsp salt
-	2 tsp vanilla
-	2c chocolate chips
-	3c nuts
+``` no-highlight
+4 eggs - beaten \ whip together by
+1c oil          / drizzling in slowly
+2c sugar
+2c brown sugar
+5c oats (rolled or ground)
+4c flour
+2 tsp baking soda
+2 tsp baking powder
+1 1/2 tsp salt
+2 tsp vanilla
+2c chocolate chips
+3c nuts
+```
 
 ## Directions
 
