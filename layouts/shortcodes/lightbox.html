@@ -1,0 +1,1 @@
+<a href='{{ index .Params "href" }}' data-lightbox='{{ index .Params "name" }}' {{ if isset .Params "title" }}title='{{ index .Params "title" }}'{{ end }}>{{ index .Params "name" }}</a>
