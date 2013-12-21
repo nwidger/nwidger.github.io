@@ -1,0 +1,11 @@
+<div class="thumbnail">
+  <img data-src='{{ index .Params "src" }}'>
+
+  {{ if isset .Params "caption" }}
+  <div class="caption">
+    <p>
+      {{ index .Params "caption" }}
+    </p>
+  </div>
+  {{ end }}
+</div>
