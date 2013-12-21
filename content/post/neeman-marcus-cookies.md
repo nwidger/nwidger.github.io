@@ -25,7 +25,7 @@ to like them.
 1 1/2 tsp salt
 2 tsp vanilla
 2c chocolate chips
-3c nuts
+3c nuts (optional)
 ```
 
 ## Directions
