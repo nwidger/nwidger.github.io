@@ -9,6 +9,246 @@
     <updated>0001-01-01 00:00:00 &#43;0000 UTC</updated>
     
     <item>
+      <title>Writing an NES emulator in Go, Part 1</title>
+      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</link>
+      <pubDate>Sat, 28 Dec 2013 00:00:00 UTC</pubDate>
+      <author>Niels Widger</author>
+      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</guid>
+      <description>&lt;h2&gt;Motivation&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;ve decided to write my own NES emulator in Go.  I know that many,
+many NES emulators have been written over the years
+(&lt;a href=&#34;https://github.com/scottferg/Fergulator/&#34;&gt;at least one&lt;/a&gt; written in
+Go), but I&amp;rsquo;ve always wanted to try writing my own emulator after using
+them for many years.  Plus it gives me a good reason to program in Go
+some more.  I plan to do a post every so often as the emulator
+progresses.  Hopefully I don&amp;rsquo;t lose interest half-way through!  I&amp;rsquo;ll
+be putting the source code for the project up on
+&lt;a href=&#34;https://github.com/nwidger/65go2&#34;&gt;this GitHub&lt;/a&gt; repository.&lt;/p&gt;
+
+&lt;h2&gt;Architecture&lt;/h2&gt;
+
+&lt;p&gt;My first task is to write a simulator for the CPU used by the NES, the
+MOS 6502.  The 6502 chip used in the NTSC NES runs at 1.789773Mhz, or
+1,789,773 cycles per second.  The NES&amp;rsquo;s 6502 does not support decimal
+mode, meaning a few instructions don&amp;rsquo;t need to be supported which is
+goood.&lt;/p&gt;
+
+&lt;p&gt;The MOS 6502 is an 8-bit processor with 16-bit addresses
+(little-endian, so it expects the least significant byte of each
+16-bit address to be stored first in memory).  It has no I/O lines, so
+any I/O registers must be mapped into the 16-bit address space.  A
+full listing of the 6502&amp;rsquo;s instruction set can be found
+&lt;a href=&#34;http://www.obelisk.demon.co.uk/6502/registers.html&#34;&gt;here&lt;/a&gt; and
+&lt;a href=&#34;http://www.6502.org/tutorials/6502opcodes.html&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Registers&lt;/h2&gt;
+
+&lt;p&gt;All registers are 8-bit unless otherwise noted.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Accumulator (&lt;code&gt;A&lt;/code&gt;) - The &lt;code&gt;A&lt;/code&gt; register is used for all arithmetic and
+logic instructions.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Index Register 1 &amp;amp; 2 (&lt;code&gt;X&lt;/code&gt; &amp;amp; &lt;code&gt;Y&lt;/code&gt;) - Registers &lt;code&gt;X&lt;/code&gt; and &lt;code&gt;Y&lt;/code&gt; are used
+for indirect addressing and also as counters/indexes.  &lt;code&gt;X&lt;/code&gt; is used
+by certain instructions to save/restore the value of &lt;code&gt;P&lt;/code&gt; using the
+stack.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Stack Pointer (&lt;code&gt;SP&lt;/code&gt;) - Stores the least-significant byte of the top
+of the stack.  The 6502&amp;rsquo;s stack is hardwired to occupy &lt;code&gt;$0100&lt;/code&gt; -
+&lt;code&gt;$01ff&lt;/code&gt; with &lt;code&gt;SP&lt;/code&gt; initalized to &lt;code&gt;$ff&lt;/code&gt; at power-up.  If the value of
+&lt;code&gt;SP&lt;/code&gt; is &lt;code&gt;$84&lt;/code&gt; then the top of the stack is located at &lt;code&gt;$0184&lt;/code&gt;.  The
+top of the stack moves downward in memory as values are pushed and
+upward as values are popped.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Program Counter (&lt;code&gt;PC&lt;/code&gt;) - The only 16-bit register on the 6502, &lt;code&gt;PC&lt;/code&gt;
+points to the next instruction to execute.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Processor Status (&lt;code&gt;P&lt;/code&gt;) - The bits in &lt;code&gt;P&lt;/code&gt; indicate the results of the
+last arithmetic and logic instructions as well as indicate if a
+break/interrupt instruction has just been executed.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Bit 0 - Carry Flag (&lt;code&gt;C&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 1 - Zero Flag (&lt;code&gt;Z&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 2 - Interrupt Disable (&lt;code&gt;I&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 3 - Decimal Mode (&lt;code&gt;D&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 4 - Break Command (&lt;code&gt;B&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 5 - -UNUSED-&lt;/li&gt;
+&lt;li&gt;Bit 6 - Overflow Flag (&lt;code&gt;O&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;Bit 7 - Negative Flag (&lt;code&gt;N&lt;/code&gt;)&lt;/li&gt;
+&lt;/ul&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;More information on the 6502&amp;rsquo;s registers can be found
+&lt;a href=&#34;http://www.obelisk.demon.co.uk/6502/registers.html&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Memory Map&lt;/h2&gt;
+
+&lt;p&gt;The 6502&amp;rsquo;s memory layout is very simple.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;&lt;code&gt;$0000&lt;/code&gt; - &lt;code&gt;$00ff&lt;/code&gt; - Used by zero page addressing instructions.
+Instructions using zero page addressing only require an 8-bit
+address parameter.  The most-signficant 8-bits of the address are
+assumed to be &lt;code&gt;$00&lt;/code&gt;.  This is done to save memory since the address
+requires half the space.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;$0100&lt;/code&gt; - &lt;code&gt;$01ff&lt;/code&gt; - Reserved for the system stack.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;$0200&lt;/code&gt; - &lt;code&gt;$fff9&lt;/code&gt; - Unspecified&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;fff$a&lt;/code&gt; - &lt;code&gt;$fffb&lt;/code&gt; - Contains address of non-maskable interrupt (NMI) handler&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;$fffc&lt;/code&gt; - &lt;code&gt;$fffd&lt;/code&gt; - Contains address of reset location&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;$fffe&lt;/code&gt; - &lt;code&gt;$ffff&lt;/code&gt; - Contains address of BRK/IRQ handler&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Implementation&lt;/h2&gt;
+
+&lt;p&gt;Implementing the CPU is simply a matter of creating a representation
+of the CPU&amp;rsquo;s internals and input/output lines and then writing
+functions which implement the 6502&amp;rsquo;s instruction set.&lt;/p&gt;
+
+&lt;h3&gt;Memory&lt;/h3&gt;
+
+&lt;p&gt;Memory can simply be a 65,536 (16-bit address bus, so &lt;code&gt;2^16&lt;/code&gt;
+addresses) element &lt;code&gt;uint8&lt;/code&gt; array.  Reads/writes to memory merely get
+and set elements in the array.  For now I will use a very simple
+&lt;code&gt;BasicMemory&lt;/code&gt; type to emulate the 6502&amp;rsquo;s RAM:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;type Memory interface {
+    reset()
+    fetch(address uint16) (value uint8)
+    store(address uint16, value uint8) (oldValue uint8)
+}
+
+type BasicMemory [65536]uint8
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In order to handle the memory mapping done by the NES, I will need to
+create an &lt;code&gt;NESMemory&lt;/code&gt; type which implements the &lt;code&gt;Memory&lt;/code&gt; interface but
+whose &lt;code&gt;fetch&lt;/code&gt; and &lt;code&gt;store&lt;/code&gt; functions understand the NES&amp;rsquo;s memory
+layout.  Specifically, a number of memory ranges are either mirrored
+to other memory ranges, memory mapped to registers of the PPU (Picture
+Processing Unit) and APU (Audio Processing Unit), or mapped to the
+actual NES cartridge.  See
+&lt;a href=&#34;http://wiki.nesdev.com/w/index.php/CPU_memory_map&#34;&gt;here&lt;/a&gt; for details.&lt;/p&gt;
+
+&lt;h3&gt;CPU&lt;/h3&gt;
+
+&lt;p&gt;The &lt;code&gt;Cpu&lt;/code&gt; type stores the 6502&amp;rsquo;s registers and instruction table as
+well as a clock input and a link off to memory:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;type Status uint8
+
+const (
+    C Status = 1 &amp;lt;&amp;lt; iota // carry flag
+    Z                    // zero flag
+    I                    // interrupt disable
+    D                    // decimal mode
+    B                    // break command
+    _                    // -UNUSED-
+    V                    // overflow flag
+    N                    // negative flag
+)
+
+type Registers struct {
+    A  uint8  // accumulator
+    X  uint8  // index register X
+    Y  uint8  // index register Y
+    P  Status // processor status
+    SP uint8  // stack pointer
+    PC uint16 // program counter
+}
+
+type Cpu struct {
+    clock        Clock
+    registers    Registers
+    memory       Memory
+    instructions InstructionTable
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;Fetch/Execute Cycle&lt;/h3&gt;
+
+&lt;p&gt;The fetch/execute cycle of the emulator fetches the instruction at the
+address stored in the &lt;code&gt;PC&lt;/code&gt; register, looks up the opcode in its
+instruction table and then executes it.  Each instruction should be in
+charge of modifying the stack/registers/memory appropriately as well
+as incrementing the &lt;code&gt;PC&lt;/code&gt; register appropriately for the number of
+parameters (or using the value of the parameters, in the case of
+branching instructions).  Each instruction also needs to determine how
+many clock cycles it should use up, since some instructions take
+different number of clock cycles depending on their parameters.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (cpu *Cpu) Execute() {
+    // fetch
+    opcode := OpCode(cpu.memory.fetch(cpu.registers.PC))
+    inst, ok := cpu.instructions[opcode]
+
+    if !ok {
+        fmt.Printf(&amp;quot;No such opcode 0x%x\n&amp;quot;, opcode)
+        os.Exit(1)
+    }
+
+    // execute, exec() returns number of cycles
+    cycles := inst.exec(cpu)
+
+    // count cycles
+    for _ = range cpu.clock.ticker.C {
+        cycles--
+
+        if cycles == 0 {
+            break
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3&gt;Clock&lt;/h3&gt;
+
+&lt;p&gt;One tricky point in the implementation is going to be timing.  For the
+6502 to interact properly with other components of the NES such as the
+PPU and APU, it must execute instructions in a specific amount of time
+and stay in sync with the master clock.  According to the 6502
+specification, each instruction takes a deterministic number of clock
+cycles to execute.  Since it can probably be taken for granted that a
+modern machine will be able to execute each instruction faster than a
+real 6502 chip, the emulator will need to throttle the CPU to ensure
+it does not execute too quickly.  I plan to look into Go&amp;rsquo;s
+&lt;a href=&#34;http://golang.org/pkg/time/&#34;&gt;time&lt;/a&gt; package, specifically the Ticker
+data type, to implement the clock signal used by the 6502.  This is
+definitely the part I&amp;rsquo;m worried about the most.&lt;/p&gt;
+
+&lt;h2&gt;Up Next&lt;/h2&gt;
+
+&lt;p&gt;I have the basic architecture written, but so far I&amp;rsquo;ve only
+implemented the &lt;code&gt;LDA&lt;/code&gt; instruction.  After implementing the rest of the
+instruction set I will need to write a number of unit tests to ensure
+everything is working properly.  This should give me a chance to try
+out Go&amp;rsquo;s
+&lt;a href=&#34;http://golang.org/doc/code.html#Testing&#34;&gt;unit testing framework&lt;/a&gt;,
+specifically Go 1.2&amp;rsquo;s new
+&lt;a href=&#34;http://golang.org/doc/go1.2#cover&#34;&gt;test coverage&lt;/a&gt; features (here&amp;rsquo;s a
+great &lt;a href=&#34;http://blog.golang.org/cover&#34;&gt;blog post&lt;/a&gt; about the feature).&lt;/p&gt;
+
+&lt;h2&gt;Resources&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;ve been using the following sites to help in implementing the 6502
+and learn about the internals of the NES.&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;http://wiki.nesdev.com/&#34;&gt;NESDev Wiki&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://www.6502.org/tutorials/6502opcodes.html&#34;&gt;6502.org NMOS 6502 Opcodes&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;http://www.obelisk.demon.co.uk/6502/index.html&#34;&gt;6502 Introduction&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
+    
+    <item>
       <title>Neeman-Marcus Cookies</title>
       <link>http://nwidger.github.io/post/neeman-marcus-cookies</link>
       <pubDate>Sat, 21 Dec 2013 00:00:00 UTC</pubDate>

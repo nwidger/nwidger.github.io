@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Niels Widger">
+    <link rel="shortcut icon" href="http://nwidger.github.io/blog/images/alert.red.gif">
+
+    <title>Writing an NES emulator in Go, Part 1</title>
+    <link href="" rel="alternate" type="application/rss+xml" title="nwidger" />
+
+        <link href="http://nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/bootstrap-theme.min.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/highlightjs/default.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/lightbox.css" rel="stylesheet" />
+    <link href="http://nwidger.github.io/blog/stylesheets/style.css" rel="stylesheet"/>
+
+
+    
+    
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+	  <a class="navbar-brand" href="http://nwidger.github.io/blog/"><span class="glyphicon glyphicon-exclamation-sign"></span>&nbsp; nwidger</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="http://nwidger.github.io/blog/post">Posts</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="http://nwidger.github.io/blog/categories">Categories</a></li>
+            <li><a href="http://nwidger.github.io/blog/tags">Tags</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+
+
+<div class="row">
+  <div class="col-md-3" id="sidebar"><div id="toc"></div></div>
+
+  <div class="col-md-9">
+          <div class="page-header">
+            <h1>Writing an NES emulator in Go, Part 1</h1>
+          </div>
+
+          <h2>Motivation</h2>
+
+<p>I&rsquo;ve decided to write my own NES emulator in Go.  I know that many,
+many NES emulators have been written over the years
+(<a href="https://github.com/scottferg/Fergulator/">at least one</a> written in
+Go), but I&rsquo;ve always wanted to try writing my own emulator after using
+them for many years.  Plus it gives me a good reason to program in Go
+some more.  I plan to do a post every so often as the emulator
+progresses.  Hopefully I don&rsquo;t lose interest half-way through!  I&rsquo;ll
+be putting the source code for the project up on
+<a href="https://github.com/nwidger/65go2">this GitHub</a> repository.</p>
+
+<h2>Architecture</h2>
+
+<p>My first task is to write a simulator for the CPU used by the NES, the
+MOS 6502.  The 6502 chip used in the NTSC NES runs at 1.789773Mhz, or
+1,789,773 cycles per second.  The NES&rsquo;s 6502 does not support decimal
+mode, meaning a few instructions don&rsquo;t need to be supported which is
+goood.</p>
+
+<p>The MOS 6502 is an 8-bit processor with 16-bit addresses
+(little-endian, so it expects the least significant byte of each
+16-bit address to be stored first in memory).  It has no I/O lines, so
+any I/O registers must be mapped into the 16-bit address space.  A
+full listing of the 6502&rsquo;s instruction set can be found
+<a href="http://www.obelisk.demon.co.uk/6502/registers.html">here</a> and
+<a href="http://www.6502.org/tutorials/6502opcodes.html">here</a>.</p>
+
+<h2>Registers</h2>
+
+<p>All registers are 8-bit unless otherwise noted.</p>
+
+<ul>
+<li><p>Accumulator (<code>A</code>) - The <code>A</code> register is used for all arithmetic and
+logic instructions.</p></li>
+
+<li><p>Index Register 1 &amp; 2 (<code>X</code> &amp; <code>Y</code>) - Registers <code>X</code> and <code>Y</code> are used
+for indirect addressing and also as counters/indexes.  <code>X</code> is used
+by certain instructions to save/restore the value of <code>P</code> using the
+stack.</p></li>
+
+<li><p>Stack Pointer (<code>SP</code>) - Stores the least-significant byte of the top
+of the stack.  The 6502&rsquo;s stack is hardwired to occupy <code>$0100</code> -
+<code>$01ff</code> with <code>SP</code> initalized to <code>$ff</code> at power-up.  If the value of
+<code>SP</code> is <code>$84</code> then the top of the stack is located at <code>$0184</code>.  The
+top of the stack moves downward in memory as values are pushed and
+upward as values are popped.</p></li>
+
+<li><p>Program Counter (<code>PC</code>) - The only 16-bit register on the 6502, <code>PC</code>
+points to the next instruction to execute.</p></li>
+
+<li><p>Processor Status (<code>P</code>) - The bits in <code>P</code> indicate the results of the
+last arithmetic and logic instructions as well as indicate if a
+break/interrupt instruction has just been executed.</p>
+
+<ul>
+<li>Bit 0 - Carry Flag (<code>C</code>)</li>
+<li>Bit 1 - Zero Flag (<code>Z</code>)</li>
+<li>Bit 2 - Interrupt Disable (<code>I</code>)</li>
+<li>Bit 3 - Decimal Mode (<code>D</code>)</li>
+<li>Bit 4 - Break Command (<code>B</code>)</li>
+<li>Bit 5 - -UNUSED-</li>
+<li>Bit 6 - Overflow Flag (<code>O</code>)</li>
+<li>Bit 7 - Negative Flag (<code>N</code>)</li>
+</ul></li>
+</ul>
+
+<p>More information on the 6502&rsquo;s registers can be found
+<a href="http://www.obelisk.demon.co.uk/6502/registers.html">here</a>.</p>
+
+<h2>Memory Map</h2>
+
+<p>The 6502&rsquo;s memory layout is very simple.</p>
+
+<ul>
+<li><p><code>$0000</code> - <code>$00ff</code> - Used by zero page addressing instructions.
+Instructions using zero page addressing only require an 8-bit
+address parameter.  The most-signficant 8-bits of the address are
+assumed to be <code>$00</code>.  This is done to save memory since the address
+requires half the space.</p></li>
+
+<li><p><code>$0100</code> - <code>$01ff</code> - Reserved for the system stack.</p></li>
+
+<li><p><code>$0200</code> - <code>$fff9</code> - Unspecified</p></li>
+
+<li><p><code>fff$a</code> - <code>$fffb</code> - Contains address of non-maskable interrupt (NMI) handler</p></li>
+
+<li><p><code>$fffc</code> - <code>$fffd</code> - Contains address of reset location</p></li>
+
+<li><p><code>$fffe</code> - <code>$ffff</code> - Contains address of BRK/IRQ handler</p></li>
+</ul>
+
+<h2>Implementation</h2>
+
+<p>Implementing the CPU is simply a matter of creating a representation
+of the CPU&rsquo;s internals and input/output lines and then writing
+functions which implement the 6502&rsquo;s instruction set.</p>
+
+<h3>Memory</h3>
+
+<p>Memory can simply be a 65,536 (16-bit address bus, so <code>2^16</code>
+addresses) element <code>uint8</code> array.  Reads/writes to memory merely get
+and set elements in the array.  For now I will use a very simple
+<code>BasicMemory</code> type to emulate the 6502&rsquo;s RAM:</p>
+
+<pre><code class="go">type Memory interface {
+    reset()
+    fetch(address uint16) (value uint8)
+    store(address uint16, value uint8) (oldValue uint8)
+}
+
+type BasicMemory [65536]uint8
+</code></pre>
+
+<p>In order to handle the memory mapping done by the NES, I will need to
+create an <code>NESMemory</code> type which implements the <code>Memory</code> interface but
+whose <code>fetch</code> and <code>store</code> functions understand the NES&rsquo;s memory
+layout.  Specifically, a number of memory ranges are either mirrored
+to other memory ranges, memory mapped to registers of the PPU (Picture
+Processing Unit) and APU (Audio Processing Unit), or mapped to the
+actual NES cartridge.  See
+<a href="http://wiki.nesdev.com/w/index.php/CPU_memory_map">here</a> for details.</p>
+
+<h3>CPU</h3>
+
+<p>The <code>Cpu</code> type stores the 6502&rsquo;s registers and instruction table as
+well as a clock input and a link off to memory:</p>
+
+<pre><code class="go">type Status uint8
+
+const (
+    C Status = 1 &lt;&lt; iota // carry flag
+    Z                    // zero flag
+    I                    // interrupt disable
+    D                    // decimal mode
+    B                    // break command
+    _                    // -UNUSED-
+    V                    // overflow flag
+    N                    // negative flag
+)
+
+type Registers struct {
+    A  uint8  // accumulator
+    X  uint8  // index register X
+    Y  uint8  // index register Y
+    P  Status // processor status
+    SP uint8  // stack pointer
+    PC uint16 // program counter
+}
+
+type Cpu struct {
+    clock        Clock
+    registers    Registers
+    memory       Memory
+    instructions InstructionTable
+}
+</code></pre>
+
+<h3>Fetch/Execute Cycle</h3>
+
+<p>The fetch/execute cycle of the emulator fetches the instruction at the
+address stored in the <code>PC</code> register, looks up the opcode in its
+instruction table and then executes it.  Each instruction should be in
+charge of modifying the stack/registers/memory appropriately as well
+as incrementing the <code>PC</code> register appropriately for the number of
+parameters (or using the value of the parameters, in the case of
+branching instructions).  Each instruction also needs to determine how
+many clock cycles it should use up, since some instructions take
+different number of clock cycles depending on their parameters.</p>
+
+<pre><code class="go">func (cpu *Cpu) Execute() {
+    // fetch
+    opcode := OpCode(cpu.memory.fetch(cpu.registers.PC))
+    inst, ok := cpu.instructions[opcode]
+
+    if !ok {
+        fmt.Printf(&quot;No such opcode 0x%x\n&quot;, opcode)
+        os.Exit(1)
+    }
+
+    // execute, exec() returns number of cycles
+    cycles := inst.exec(cpu)
+
+    // count cycles
+    for _ = range cpu.clock.ticker.C {
+        cycles--
+
+        if cycles == 0 {
+            break
+        }
+    }
+}
+</code></pre>
+
+<h3>Clock</h3>
+
+<p>One tricky point in the implementation is going to be timing.  For the
+6502 to interact properly with other components of the NES such as the
+PPU and APU, it must execute instructions in a specific amount of time
+and stay in sync with the master clock.  According to the 6502
+specification, each instruction takes a deterministic number of clock
+cycles to execute.  Since it can probably be taken for granted that a
+modern machine will be able to execute each instruction faster than a
+real 6502 chip, the emulator will need to throttle the CPU to ensure
+it does not execute too quickly.  I plan to look into Go&rsquo;s
+<a href="http://golang.org/pkg/time/">time</a> package, specifically the Ticker
+data type, to implement the clock signal used by the 6502.  This is
+definitely the part I&rsquo;m worried about the most.</p>
+
+<h2>Up Next</h2>
+
+<p>I have the basic architecture written, but so far I&rsquo;ve only
+implemented the <code>LDA</code> instruction.  After implementing the rest of the
+instruction set I will need to write a number of unit tests to ensure
+everything is working properly.  This should give me a chance to try
+out Go&rsquo;s
+<a href="http://golang.org/doc/code.html#Testing">unit testing framework</a>,
+specifically Go 1.2&rsquo;s new
+<a href="http://golang.org/doc/go1.2#cover">test coverage</a> features (here&rsquo;s a
+great <a href="http://blog.golang.org/cover">blog post</a> about the feature).</p>
+
+<h2>Resources</h2>
+
+<p>I&rsquo;ve been using the following sites to help in implementing the 6502
+and learn about the internals of the NES.</p>
+
+<ul>
+<li><a href="http://wiki.nesdev.com/">NESDev Wiki</a></li>
+<li><a href="http://www.6502.org/tutorials/6502opcodes.html">6502.org NMOS 6502 Opcodes</a></li>
+<li><a href="http://www.obelisk.demon.co.uk/6502/index.html">6502 Introduction</a></li>
+</ul>
+
+
+          <p><small>Sat, Dec 28, 2013</small></p>
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Tags: 
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/tags/go">go</a></span>
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/tags/emulation">emulation</a></span>
+	        
+            </div>
+          </div>
+	  
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Categories:
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/categories/programming">programming</a></span>
+	        
+            </div>
+          </div>
+	  
+
+          <ul class="pager">
+              
+              <li class="next"><a href="http://nwidger.github.io/blog/post/neeman-marcus-cookies">Next &rarr;</a></li>
+          </ul>
+
+	  <div id="disqus_thread"></div>
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function () {
+  var s = document.createElement('script'); s.async = true;
+  s.type = 'text/javascript';
+  s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+  (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+  }());
+</script>
+
+	  
+    </div>
+
+    <script src="http://nwidger.github.io/blog/javascripts/jquery.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/lightbox.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery-ui.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery.tocify.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/bootstrap.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/highlight.pack.js"></script>
+  </body>
+</html>
+
+  </div>
+</div>
+
+<script>
+  $(function() {
+         
+         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', scrollTo: 50, hashGenerator: 'pretty' });
+
+         hljs.initHighlightingOnLoad();
+  });
+</script>
