@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Niels Widger">
+    <link rel="shortcut icon" href="http://nwidger.github.io/blog/images/alert.red.gif">
+
+    <title>Writing an NES emulator in Go, Part 2</title>
+    <link href="" rel="alternate" type="application/rss+xml" title="nwidger" />
+
+        <link href="http://nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/bootstrap-theme.min.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/highlightjs/default.css" rel="stylesheet"/>
+    <link href="http://nwidger.github.io/blog/stylesheets/lightbox.css" rel="stylesheet" />
+    <link href="http://nwidger.github.io/blog/stylesheets/style.css" rel="stylesheet"/>
+
+
+    
+    
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+	  <a class="navbar-brand" href="http://nwidger.github.io/blog/"><span class="glyphicon glyphicon-exclamation-sign"></span>&nbsp; nwidger</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="http://nwidger.github.io/blog/post">Posts</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="http://nwidger.github.io/blog/categories">Categories</a></li>
+            <li><a href="http://nwidger.github.io/blog/tags">Tags</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+
+
+<div class="row">
+  <div class="col-md-3" id="sidebar"><div id="toc"></div></div>
+
+  <div class="col-md-9">
+          <div class="page-header">
+            <h1>Writing an NES emulator in Go, Part 2</h1>
+          </div>
+
+          <p>I&rsquo;m writing an NES emulator in Go and writing posts about it as I go
+along.  If you haven&rsquo;t read it yet, the first post can be
+<a href="http://nwidger.github.io/blog/post/writing-an-nes-emulator-in-go-part-1">found here</a>.</p>
+
+<h2>Progress</h2>
+
+<p>I&rsquo;ve made significant progress on the 6502 code.  All of the
+instructions have been implemented and the emulator executes each
+instruction in the correct number of cycles, keeping in step with the
+external clock signal.  You can look at the code at the GitHub
+repository <a href="https://github.com/nwidger/65go2">here</a>.</p>
+
+<h2>Timing</h2>
+
+<p>The <code>Clock</code> type hasn&rsquo;t changed very much since the first post.</p>
+
+<pre><code class="go">
+type Clock struct {
+    rate     time.Duration
+    ticks    uint64
+    ticker   *time.Ticker
+    stopChan chan int
+    waiting  map[uint64][]chan int
+}
+</code></pre>
+
+<p>The major change is that the clock now maintains a <code>ticks</code> field which
+counts the number of cycles elapsed since the clock was started.  The
+clock&rsquo;s <code>start</code> method kicks off the <code>maintainTime</code> function in a new
+goroutine.  The new goroutine performs two functions:</p>
+
+<ul>
+<li><p>Increment <code>ticks</code> whenever the ticker fires.</p></li>
+
+<li><p>Wake up any other threads waiting for a specific tick to arrive.</p></li>
+</ul>
+
+<pre><code class="go">func (clock *Clock) maintainTime() {
+    for {
+        select {
+        case &lt;-clock.stopChan:
+            clock.ticker = nil
+            return
+        case _ = &lt;-clock.ticker.C:
+            clock.ticks++
+
+            if Ca, ok := clock.waiting[clock.ticks]; ok {
+                for _, C := range Ca {
+                    C &lt;- 1
+                }
+
+                delete(clock.waiting, clock.ticks)
+            }
+        }
+    }
+}
+</code></pre>
+
+<p>The <code>waiting</code> field maps ticker values to a slice of channels used to
+signal other threads waiting for that particular clock tick to arrive
+(a slice in Go is an array which grows and shrinks dynamically).</p>
+
+<p>In CPU&rsquo;s <code>Execute</code> method, after an opcode executes it returns the
+number of cycles to wait for.  We first multiply this by the CPU clock
+divisor of twelve (the master clock runs at 21.477272Mhz but the CPU
+divides that by twelve to run at 1.789773Mhz) and then wait for this
+many cycles past the current tick using the clock&rsquo;s <code>await</code> method:</p>
+
+<pre><code class="go">func (cpu *Cpu) Execute() (cycles uint16, error error) {
+    ticks := cpu.clock.ticks
+
+    // fetch
+    opcode := OpCode(cpu.memory.fetch(cpu.registers.PC))
+    inst, ok := cpu.instructions[opcode]
+
+    if !ok {
+        return 0, BadOpCodeError(opcode)
+    }
+
+    // execute
+    cpu.registers.PC++
+    cycles = inst.exec(cpu)
+
+    // count cycles
+    cpu.clock.await(ticks + uint64(cycles*cpu.divisor))
+
+    return cycles, nil
+}
+</code></pre>
+
+<p>The clock&rsquo;s <code>await</code> method is very simple.  If the tick we want hasn&rsquo;t
+arrived yet, we append a new buffered channel to the entry in the
+<code>waiting</code> map for the tick we want and then try to read from the
+channel (that&rsquo;s what <code>&lt;-C</code> is doing) which will cause us to block.
+When <code>maintainTime</code> arrives at our tick, it will write an integer into
+the channel thus waking us up and allowing us to return to the
+<code>Execute</code> frame.</p>
+
+<pre><code class="go">func (clock *Clock) await(tick uint64) uint64 {
+    if clock.ticks &lt; tick {
+        C := make(chan int, 1)
+        clock.waiting[tick] = append(clock.waiting[tick], C)
+        &lt;-C
+    }
+
+    return clock.ticks
+}
+</code></pre>
+
+<h2>Unit Testing in Go</h2>
+
+<p>I used Go&rsquo;s unit testing framework to write tests for each
+instruction.  Unit testing is provided in Go using the
+<a href="http://golang.org/pkg/testing/">testing</a> package and the
+<a href="http://golang.org/cmd/go/#hdr-Test_packages">go test</a> command.
+There&rsquo;s a short explanation about it
+<a href="http://golang.org/doc/code.html#Testing">here</a>.  You can take a peek
+at the tests
+<a href="https://github.com/nwidger/65go2/blob/master/instructions_test.go">here</a>
+if you want.</p>
+
+<p>To test each instruction in my 6502 emulator, I first created a new
+file <code>instructions_test.go</code> (the <code>go test</code> command runs all tests in
+files that end with <code>_test.go</code>).  For each instruction, I wrote at
+least one test as a function with a signature like <code>func
+TestLdaImmediate(t *testing.T)</code>.  The <code>go test</code> command runs all
+functions with the signature <code>func TestXXX(t *testing.T)</code>.</p>
+
+<p>Since I needed to setup/teardown the CPU and clock for each test, I
+wrote a pair of functions to do this:</p>
+
+<pre><code class="go">package _65go2
+
+import (
+    &quot;testing&quot;
+    &quot;time&quot;
+)
+
+const rate time.Duration = 46 * time.Nanosecond // 21.477272Mhz
+const divisor = 12
+
+var cpu *Cpu
+
+func Setup() {
+    clock := NewClock(rate)
+    cpu = NewCpu(NewBasicMemory(), divisor, clock)
+    cpu.Reset()
+    go clock.start()
+}
+
+func Teardown() {
+    cpu.clock.stop()
+}
+</code></pre>
+
+<p>Each test function calls <code>Setup</code>/<code>Teardown</code> at the beginning/end of
+each test to ensure everything starts at a well-known state:</p>
+
+<pre><code class="go">func TestLdaImmediate(t *testing.T) {
+    Setup()
+
+    cpu.registers.PC = 0x0100
+
+    cpu.memory.store(0x0100, 0xa9)
+    cpu.memory.store(0x0101, 0xff)
+
+    cpu.Execute()
+
+    if cpu.registers.A != 0xff {
+        t.Error(&quot;Register A is not 0xff&quot;)
+    }
+
+    Teardown()
+}
+
+func TestLdaZeroPage(t *testing.T) {
+    Setup()
+
+    cpu.registers.PC = 0x0100
+
+    cpu.memory.store(0x0100, 0xa5)
+    cpu.memory.store(0x0101, 0x84)
+    cpu.memory.store(0x0084, 0xff)
+
+    cpu.Execute()
+
+    if cpu.registers.A != 0xff {
+        t.Error(&quot;Register A is not 0xff&quot;)
+    }
+
+    Teardown()
+}
+</code></pre>
+
+<p>Failing a test is easy, just call <code>t.Error</code>, passing it a reason
+string.</p>
+
+<p>The unit tests ensure a number of things about each instruction:</p>
+
+<ul>
+<li><p>The instruction modifies the appropriate memory addresses or
+registers</p></li>
+
+<li><p>The bits of status register <code>P</code> are set/cleared correctly</p></li>
+
+<li><p>The instruction executes in the correct number of clock cycles</p></li>
+
+<li><p>Many instructions have multiple opcodes, each using a different
+addressing mode.  There is a test for each opcode to ensure it
+really uses that addressing mode correctly.</p></li>
+</ul>
+
+<p>All in all there are about 270 tests total.  Whenever I make a change
+to the codebase, I can be fairly confident that I haven&rsquo;t broken
+anything major by running the unit tests:</p>
+
+<pre><code class="no-highlight">macros:65go2 nwidger$ go test
+PASS
+ok      github.com/nwidger/65go2    0.815s
+</code></pre>
+
+<p>I found the code coverage tool very useful while writing my tests.
+This feature works by writing a coverage profile to disk when <code>go
+test</code> is run.</p>
+
+<pre><code class="no-highlight">macros:65go2 nwidger$ go test -coverprofile=coverage.out
+PASS
+coverage: 89.9% of statements
+ok      github.com/nwidger/65go2    0.830s
+</code></pre>
+
+<p>Later, <code>go tool cover</code> can use a coverage profile to display coverage
+information either as a simple textfile or an HTML page.  The textfile
+format is a simple table with percentages for each function:</p>
+
+<pre><code class="no-highlight">macros:65go2 nwidger$ go tool cover -func=coverage.out
+github.com/nwidger/65go2/cpu.go:        absoluteIndexedAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        indexedIndirectAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        indirectIndexedAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        Lda         66.7%
+github.com/nwidger/65go2/cpu.go:        Ldx         66.7%
+github.com/nwidger/65go2/cpu.go:        Ldy         66.7%
+</code></pre>
+
+<p>The HTML page shows the code coverage of your tests in an extremely
+visual manner.</p>
+
+<pre><code class="no-highlight">go tool cover -html=coverage.out
+</code></pre>
+
+<p>You can see example output of <code>go tool cover -html</code> on
+<a href="http://nwidger.github.io/blog/html/coverage.html">this page</a>.  You can select the file to view
+from the pull-down at the top-left of the page.</p>
+
+<h2>Test Programs</h2>
+
+<p>I also tried running a
+<a href="http://2m5.de/6502_Emu/6502_functional_tests.zip">6502 functional test program</a>
+inside my emulator but kept running into problems.  The documentation
+says the <code>PC</code> register should be set to <code>$1000</code> but after looking at
+the test image in a hex editor (thanks
+<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Editing-Binary-Files.html">hexl-mode</a>)
+that location contains an illegal opcode.  Furthermore, after
+comparing the assembler file with the assembled binary image, it&rsquo;s
+clear that some of the absolute addresses in <code>JMP</code> instructions are
+off but 4-10 bytes.  Either way, I was unable to get the test program
+to run without encountering an illegal opcode and crashing.
+Fortunately, I did get it to run enough to at least assure me that the
+basic fetch/execute cycle works properly.  I may go back and try to
+get a test program running, as it would give me even greater assurance
+that everything is implemented correctly.</p>
+
+<h2>Up Next</h2>
+
+<p>The next big implementation job is to start implementing the PPU
+(Picture Processing Unit) used in the NES, which is a 2C02 chip.  The
+PPU has eight registers which are mapped into the CPU&rsquo;s address space
+between <code>$2000</code> and <code>$2007</code>.  I have a feeling I still have a lot of
+reading to do before I&rsquo;ll understand how the PPU works enough to start
+implementing it.  I&rsquo;m still on the fence about how to do the memory
+mapping, but I have some ideas.</p>
+
+
+          <p><small>Sat, Jan 4, 2014</small></p>
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Tags: 
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/tags/go">go</a></span>
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/tags/emulation">emulation</a></span>
+	        
+            </div>
+          </div>
+	  
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Categories:
+	        
+                <span class="label label-primary"><a href="http://nwidger.github.io/blog/categories/programming">programming</a></span>
+	        
+            </div>
+          </div>
+	  
+
+          <ul class="pager">
+              
+              <li class="next"><a href="http://nwidger.github.io/blog/post/writing-an-nes-emulator-in-go-part-1/">Next &rarr;</a></li>
+          </ul>
+
+	  <div id="disqus_thread"></div>
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function () {
+  var s = document.createElement('script'); s.async = true;
+  s.type = 'text/javascript';
+  s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+  (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+  }());
+</script>
+
+	  
+    </div>
+
+    <script src="http://nwidger.github.io/blog/javascripts/jquery.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/lightbox.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery-ui.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/jquery.tocify.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/bootstrap.min.js"></script>
+    <script src="http://nwidger.github.io/blog/javascripts/highlight.pack.js"></script>
+  </body>
+</html>
+
+  </div>
+</div>
+
+<script>
+  $(function() {
+         
+         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', scrollTo: 50, hashGenerator: 'pretty' });
+
+         hljs.initHighlightingOnLoad();
+  });
+</script>

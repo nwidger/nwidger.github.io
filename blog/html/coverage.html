@@ -1,0 +1,2608 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/nwidger/65go2/clock.go</option>
+				
+				<option value="file1">github.com/nwidger/65go2/cpu.go</option>
+				
+				<option value="file2">github.com/nwidger/65go2/instructions.go</option>
+				
+				<option value="file3">github.com/nwidger/65go2/memory.go</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" >package _65go2
+
+import (
+        "time"
+)
+
+type Clock struct {
+        rate     time.Duration
+        divisor  int
+        ticks    uint64
+        ticker   *time.Ticker
+        stopChan chan int
+        waiting  map[uint64][]chan int
+}
+
+func NewClock(rate time.Duration, divisor int) Clock <span class="cov8" title="1">{
+        return Clock{
+                rate:     rate,
+                divisor:  divisor,
+                ticks:    0,
+                ticker:   nil,
+                stopChan: make(chan int, 1),
+                waiting:  make(map[uint64][]chan int),
+        }
+}</span>
+
+func (clock *Clock) maintainTime() <span class="cov8" title="1">{
+        ticks := 0
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                <span class="cov8" title="1">case &lt;-clock.stopChan:
+                        clock.ticker = nil
+                        return</span>
+                <span class="cov8" title="1">case _ = &lt;-clock.ticker.C:
+                        ticks++
+
+                        if ticks == clock.divisor </span><span class="cov8" title="1">{
+                                clock.ticks++
+                                ticks = 0
+
+                                if Ca, ok := clock.waiting[clock.ticks]; ok </span><span class="cov8" title="1">{
+                                        for _, C := range Ca </span><span class="cov8" title="1">{
+                                                C &lt;- 1
+                                        }</span>
+
+                                        <span class="cov8" title="1">delete(clock.waiting, clock.ticks)</span>
+                                }
+                        }
+                }
+        }
+}
+
+func (clock *Clock) start() <span class="cov8" title="1">{
+        if clock.ticker == nil </span><span class="cov8" title="1">{
+                clock.ticker = time.NewTicker(clock.rate)
+                clock.maintainTime()
+        }</span>
+}
+
+func (clock *Clock) stop() <span class="cov8" title="1">{
+        if clock.ticker != nil </span><span class="cov8" title="1">{
+                clock.stopChan &lt;- 1
+        }</span>
+}
+
+func (clock *Clock) await(tick uint64) uint64 <span class="cov8" title="1">{
+        if clock.ticks &lt; tick </span><span class="cov8" title="1">{
+                C := make(chan int, 1)
+                clock.waiting[tick] = append(clock.waiting[tick], C)
+                &lt;-C
+        }</span>
+
+        <span class="cov8" title="1">return clock.ticks</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package _65go2
+
+import (
+        "fmt"
+        "os"
+)
+
+type Status uint8
+
+const (
+        C Status = 1 &lt;&lt; iota // carry flag
+        Z                    // zero flag
+        I                    // interrupt disable
+        D                    // decimal mode
+        B                    // break command
+        _                    // -UNUSED-
+        V                    // overflow flag
+        N                    // negative flag
+)
+
+type Registers struct {
+        A  uint8  // accumulator
+        X  uint8  // index register X
+        Y  uint8  // index register Y
+        P  Status // processor status
+        SP uint8  // stack pointer
+        PC uint16 // program counter
+}
+
+func NewRegisters() Registers <span class="cov8" title="1">{
+        return Registers{}
+}</span>
+
+func (reg *Registers) reset() <span class="cov8" title="1">{
+        reg.A = 0
+        reg.X = 0
+        reg.Y = 0
+        reg.P = I
+        reg.SP = 0xfd
+        reg.PC = 0xfffc
+}</span>
+
+func (reg *Registers) print() <span class="cov0" title="0">{
+        fmt.Fprintf(os.Stderr, "A:  %#02x (%03dd) (%08bb)\n", reg.A, reg.A, reg.A)
+        fmt.Fprintf(os.Stderr, "X:  %#02x (%03dd) (%08bb)\n", reg.X, reg.X, reg.X)
+        fmt.Fprintf(os.Stderr, "Y:  %#02x (%03dd) (%08bb)\n", reg.Y, reg.Y, reg.Y)
+        fmt.Fprintf(os.Stderr, "SP: %#02x (%03dd) (%08bb)\n", reg.SP, reg.SP, reg.SP)
+
+        f := ""
+
+        getFlag := func(flag Status, set string) string </span><span class="cov0" title="0">{
+                if reg.P&amp;flag != 0 </span><span class="cov0" title="0">{
+                        return set
+                }</span> <span class="cov0" title="0">else {
+                        return "-"
+                }</span>
+        }
+
+        <span class="cov0" title="0">f += getFlag(N, "N")
+        f += getFlag(V, "V")
+        f += "-" // -UNUSED-
+        f += getFlag(B, "B")
+        f += getFlag(D, "D")
+        f += getFlag(I, "I")
+        f += getFlag(Z, "Z")
+        f += getFlag(C, "C")
+
+        fmt.Fprintf(os.Stderr, "P:  %08bb (%s)\n", reg.P, f)
+        fmt.Fprintf(os.Stderr, "PC: %#04x (%05dd) (%016bb)\n", reg.PC, reg.PC, reg.PC)</span>
+}
+
+type Cpu struct {
+        decode       bool
+        clock        Clock
+        registers    Registers
+        memory       Memory
+        instructions InstructionTable
+}
+
+func NewCpu(mem Memory, clock Clock) *Cpu <span class="cov8" title="1">{
+        return &amp;Cpu{decode: false, clock: clock, registers: NewRegisters(), memory: mem, instructions: NewInstructionTable()}
+}</span>
+
+func (cpu *Cpu) Reset() <span class="cov8" title="1">{
+        cpu.registers.reset()
+        cpu.memory.reset()
+}</span>
+
+type BadOpCodeError OpCode
+
+func (b BadOpCodeError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("No such opcode %#02x", b)
+}</span>
+
+func (cpu *Cpu) Execute() (cycles uint16, error error) <span class="cov8" title="1">{
+        ticks := cpu.clock.ticks
+
+        // fetch
+        opcode := OpCode(cpu.memory.fetch(cpu.registers.PC))
+        inst, ok := cpu.instructions[opcode]
+
+        if !ok </span><span class="cov8" title="1">{
+                return 0, BadOpCodeError(opcode)
+        }</span>
+
+        // execute
+        <span class="cov8" title="1">cpu.registers.PC++
+        cycles = inst.exec(cpu)
+
+        // count cycles
+        cpu.clock.await(ticks + uint64(cycles))
+
+        return cycles, nil</span>
+}
+
+func (cpu *Cpu) Run() (error error) <span class="cov0" title="0">{
+        for </span><span class="cov0" title="0">{
+                if _, error := cpu.Execute(); error != nil </span><span class="cov0" title="0">{
+                        fmt.Println(error)
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (cpu *Cpu) setZFlag(value uint8) uint8 <span class="cov8" title="1">{
+        if value == 0 </span><span class="cov8" title="1">{
+                cpu.registers.P |= Z
+        }</span> <span class="cov8" title="1">else {
+                cpu.registers.P &amp;= ^Z
+        }</span>
+
+        <span class="cov8" title="1">return value</span>
+}
+
+func (cpu *Cpu) setNFlag(value uint8) uint8 <span class="cov8" title="1">{
+        cpu.registers.P &amp;= ^N
+        cpu.registers.P |= Status(value &amp; (uint8(1) &lt;&lt; 7))
+        return value
+}</span>
+
+func (cpu *Cpu) setZNFlags(value uint8) uint8 <span class="cov8" title="1">{
+        cpu.setZFlag(value)
+        cpu.setNFlag(value)
+        return value
+}</span>
+
+func (cpu *Cpu) setCFlagAddition(value uint16) uint16 <span class="cov8" title="1">{
+        cpu.registers.P &amp;= ^C
+        cpu.registers.P |= Status(value &gt;&gt; 8 &amp; 0x1)
+        return value
+}</span>
+
+func (cpu *Cpu) setVFlagAddition(term1 uint16, term2 uint16, result uint16) uint16 <span class="cov8" title="1">{
+        cpu.registers.P &amp;= ^V
+        cpu.registers.P |= Status((^(term1 ^ term2) &amp; (term1 ^ result) &amp; 0x80) &gt;&gt; 1)
+        return result
+}</span>
+
+func (cpu *Cpu) load(address uint16, register *uint8) <span class="cov8" title="1">{
+        *register = cpu.setZNFlags(cpu.memory.fetch(address))
+}</span>
+
+func (cpu *Cpu) immediateAddress() (result uint16) <span class="cov8" title="1">{
+        result = cpu.registers.PC
+        cpu.registers.PC++
+        return
+}</span>
+
+func (cpu *Cpu) zeroPageAddress() (result uint16) <span class="cov8" title="1">{
+        result = uint16(cpu.memory.fetch(cpu.registers.PC))
+        cpu.registers.PC++
+        return
+}</span>
+
+func (cpu *Cpu) zeroPageIndexedAddress(index uint8) (result uint16) <span class="cov8" title="1">{
+        result = uint16(cpu.memory.fetch(cpu.registers.PC) + index)
+        cpu.registers.PC++
+        return
+}</span>
+
+func (cpu *Cpu) relativeAddress() (result uint16) <span class="cov8" title="1">{
+        value := uint16(cpu.memory.fetch(cpu.registers.PC))
+        cpu.registers.PC++
+
+        if value &gt; 0x7f </span><span class="cov8" title="1">{
+                result = cpu.registers.PC - (0x0100 - value)
+        }</span> <span class="cov8" title="1">else {
+                result = cpu.registers.PC + value
+        }</span>
+
+        <span class="cov8" title="1">return</span>
+}
+
+func (cpu *Cpu) absoluteAddress() (result uint16) <span class="cov8" title="1">{
+        low := cpu.memory.fetch(cpu.registers.PC)
+        high := cpu.memory.fetch(cpu.registers.PC + 1)
+        cpu.registers.PC += 2
+
+        result = (uint16(high) &lt;&lt; 8) | uint16(low)
+        return
+}</span>
+
+func (cpu *Cpu) indirectAddress() (result uint16) <span class="cov8" title="1">{
+        low := cpu.memory.fetch(cpu.registers.PC)
+        high := cpu.memory.fetch(cpu.registers.PC + 1)
+        cpu.registers.PC += 2
+
+        // XXX: The 6502 had a bug in which it incremented only the
+        // high byte instead of the whole 16-bit address when
+        // computing the address.
+        //
+        // See http://www.obelisk.demon.co.uk/6502/reference.html#JMP
+        // and http://www.6502.org/tutorials/6502opcodes.html#JMP for
+        // details
+        a_high := (uint16(high) &lt;&lt; 8) | uint16(low+1)
+        a_low := (uint16(high) &lt;&lt; 8) | uint16(low)
+
+        low = cpu.memory.fetch(a_low)
+        high = cpu.memory.fetch(a_high)
+
+        result = (uint16(high) &lt;&lt; 8) | uint16(low)
+        return
+}</span>
+
+func (cpu *Cpu) absoluteIndexedAddress(index uint8, cycles *uint16) (result uint16) <span class="cov8" title="1">{
+        low := cpu.memory.fetch(cpu.registers.PC)
+        high := cpu.memory.fetch(cpu.registers.PC + 1)
+        cpu.registers.PC += 2
+
+        address := (uint16(high) &lt;&lt; 8) | uint16(low)
+        result = address + uint16(index)
+
+        if cycles != nil &amp;&amp; !SamePage(address, result) </span><span class="cov8" title="1">{
+                *cycles++
+        }</span>
+
+        <span class="cov8" title="1">return</span>
+}
+
+func (cpu *Cpu) indexedIndirectAddress() (result uint16) <span class="cov8" title="1">{
+        address := uint16(cpu.memory.fetch(cpu.registers.PC) + cpu.registers.X)
+        cpu.registers.PC++
+
+        low := cpu.memory.fetch(address)
+        high := cpu.memory.fetch(address + 1)
+
+        result = (uint16(high) &lt;&lt; 8) | uint16(low)
+        return
+}</span>
+
+func (cpu *Cpu) indirectIndexedAddress(cycles *uint16) (result uint16) <span class="cov8" title="1">{
+        address := uint16(cpu.memory.fetch(cpu.registers.PC))
+        cpu.registers.PC++
+
+        low := cpu.memory.fetch(address)
+        high := cpu.memory.fetch(address + 1)
+
+        address = (uint16(high) &lt;&lt; 8) | uint16(low)
+
+        result = address + uint16(cpu.registers.Y)
+
+        if cycles != nil &amp;&amp; !SamePage(address, result) </span><span class="cov8" title="1">{
+                *cycles++
+        }</span>
+
+        <span class="cov8" title="1">return</span>
+}
+
+func (cpu *Cpu) Lda(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: LDA $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.load(address, &amp;cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Ldx(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: LDX $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.load(address, &amp;cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Ldy(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: LDY $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.load(address, &amp;cpu.registers.Y)</span>
+}
+
+func (cpu *Cpu) store(address uint16, value uint8) <span class="cov8" title="1">{
+        cpu.memory.store(address, value)
+}</span>
+
+func (cpu *Cpu) Sta(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: STA $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.store(address, cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Stx(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: STX $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.store(address, cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Sty(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: STY $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.store(address, cpu.registers.Y)</span>
+}
+
+func (cpu *Cpu) transfer(from uint8, to *uint8) <span class="cov8" title="1">{
+        *to = cpu.setZNFlags(from)
+}</span>
+
+func (cpu *Cpu) Tax() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TAX\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.A, &amp;cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Tay() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TAY\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.A, &amp;cpu.registers.Y)</span>
+}
+
+func (cpu *Cpu) Txa() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TXA\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.X, &amp;cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Tya() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TYA\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.Y, &amp;cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Tsx() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TSX\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.SP, &amp;cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Txs() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: TXS\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.transfer(cpu.registers.X, &amp;cpu.registers.SP)</span>
+}
+
+func (cpu *Cpu) push(value uint8) <span class="cov8" title="1">{
+        cpu.memory.store(0x0100|uint16(cpu.registers.SP), value)
+        cpu.registers.SP--
+}</span>
+
+func (cpu *Cpu) pull() (value uint8) <span class="cov8" title="1">{
+        cpu.registers.SP++
+        value = cpu.memory.fetch(0x0100 | uint16(cpu.registers.SP))
+        return
+}</span>
+
+func (cpu *Cpu) Pha() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: PHA\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.push(cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Php() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: PHP\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.push(uint8(cpu.registers.P | B))</span>
+}
+
+func (cpu *Cpu) Pla() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: PLA\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.A = cpu.setZNFlags(cpu.pull())</span>
+}
+
+func (cpu *Cpu) Plp() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: PLP\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P = Status(cpu.pull())</span>
+}
+
+func (cpu *Cpu) And(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: AND $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.A = cpu.setZNFlags(cpu.registers.A &amp; cpu.memory.fetch(address))</span>
+}
+
+func (cpu *Cpu) Eor(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: EOR $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.A = cpu.setZNFlags(cpu.registers.A ^ cpu.memory.fetch(address))</span>
+}
+
+func (cpu *Cpu) Ora(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ORA $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.A = cpu.setZNFlags(cpu.registers.A | cpu.memory.fetch(address))</span>
+}
+
+func (cpu *Cpu) Bit(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BIT $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">value := cpu.memory.fetch(address)
+        cpu.setZFlag(value &amp; cpu.registers.A)
+        cpu.registers.P = Status(uint8(cpu.registers.P) | (value &amp; 0xc0))</span>
+}
+
+func (cpu *Cpu) addition(value uint16) <span class="cov8" title="1">{
+        orig := uint16(cpu.registers.A)
+        result := cpu.setCFlagAddition(orig + value + uint16(cpu.registers.P&amp;C))
+        cpu.registers.A = cpu.setZNFlags(uint8(cpu.setVFlagAddition(orig, value, result)))
+}</span>
+
+func (cpu *Cpu) Adc(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ADC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">value := uint16(cpu.memory.fetch(address))
+        cpu.addition(value)</span>
+}
+
+func (cpu *Cpu) Sbc(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: SBC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">value := uint16(cpu.memory.fetch(address)) ^ 0xff + 1
+        cpu.addition(value)</span>
+}
+
+func (cpu *Cpu) compare(address uint16, register uint8) <span class="cov8" title="1">{
+        value := uint16(cpu.memory.fetch(address)) ^ 0xff + 1
+        cpu.setZNFlags(uint8(cpu.setCFlagAddition(uint16(register) + value)))
+}</span>
+
+func (cpu *Cpu) Cmp(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CMP $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.compare(address, cpu.registers.A)</span>
+}
+
+func (cpu *Cpu) Cpx(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CPX $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.compare(address, cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Cpy(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CPY $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.compare(address, cpu.registers.Y)</span>
+}
+
+func (cpu *Cpu) Inc(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: INC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.memory.store(address, cpu.setZNFlags(cpu.memory.fetch(address)+1))</span>
+}
+
+func (cpu *Cpu) increment(register *uint8) <span class="cov8" title="1">{
+        *register = cpu.setZNFlags(*register + 1)
+}</span>
+
+func (cpu *Cpu) Inx() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: INX\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.increment(&amp;cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Iny() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: INY\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.increment(&amp;cpu.registers.Y)</span>
+}
+
+func (cpu *Cpu) Dec(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: DEC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.memory.store(address, cpu.setZNFlags(cpu.memory.fetch(address)-1))</span>
+}
+
+func (cpu *Cpu) decrement(register *uint8) <span class="cov8" title="1">{
+        *register = cpu.setZNFlags(*register - 1)
+}</span>
+
+func (cpu *Cpu) Dex() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: DEX\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.decrement(&amp;cpu.registers.X)</span>
+}
+
+func (cpu *Cpu) Dey() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: DEY\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.decrement(&amp;cpu.registers.Y)</span>
+}
+
+type Direction int
+
+const (
+        left Direction = iota
+        right
+)
+
+func (cpu *Cpu) shift(direction Direction, value uint8, store func(uint8)) <span class="cov8" title="1">{
+        c := Status(0)
+
+        switch direction </span>{
+        <span class="cov8" title="1">case left:
+                c = Status((value &amp; uint8(N)) &gt;&gt; 7)
+                value &lt;&lt;= 1</span>
+        <span class="cov8" title="1">case right:
+                c = Status(value &amp; uint8(C))
+                value &gt;&gt;= 1</span>
+        }
+
+        <span class="cov8" title="1">cpu.registers.P &amp;= ^C
+        cpu.registers.P |= c
+
+        store(cpu.setZNFlags(value))</span>
+}
+
+func (cpu *Cpu) AslA() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ASL A\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.shift(left, cpu.registers.A, func(value uint8) </span><span class="cov8" title="1">{ cpu.registers.A = value }</span>)
+}
+
+func (cpu *Cpu) Asl(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ASL $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.shift(left, cpu.memory.fetch(address), func(value uint8) </span><span class="cov8" title="1">{ cpu.memory.store(address, value) }</span>)
+}
+
+func (cpu *Cpu) LsrA() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: LSR A\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.shift(right, cpu.registers.A, func(value uint8) </span><span class="cov8" title="1">{ cpu.registers.A = value }</span>)
+}
+
+func (cpu *Cpu) Lsr(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: LSR $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.shift(right, cpu.memory.fetch(address), func(value uint8) </span><span class="cov8" title="1">{ cpu.memory.store(address, value) }</span>)
+}
+
+func (cpu *Cpu) rotate(direction Direction, value uint8, store func(uint8)) <span class="cov8" title="1">{
+        c := Status(0)
+
+        switch direction </span>{
+        <span class="cov8" title="1">case left:
+                c = Status(value &amp; uint8(N) &gt;&gt; 7)
+                value = ((value &lt;&lt; 1) &amp; uint8(^C)) | uint8(cpu.registers.P&amp;C)</span>
+        <span class="cov8" title="1">case right:
+                c = Status(value &amp; uint8(C))
+                value = ((value &gt;&gt; 1) &amp; uint8(^N)) | uint8((cpu.registers.P&amp;C)&lt;&lt;7)</span>
+        }
+
+        <span class="cov8" title="1">cpu.registers.P &amp;= ^C
+        cpu.registers.P |= c
+
+        store(cpu.setZNFlags(value))</span>
+}
+
+func (cpu *Cpu) RolA() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ROL A\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.rotate(left, cpu.registers.A, func(value uint8) </span><span class="cov8" title="1">{ cpu.registers.A = value }</span>)
+}
+
+func (cpu *Cpu) Rol(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ROL $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.rotate(left, cpu.memory.fetch(address), func(value uint8) </span><span class="cov8" title="1">{ cpu.memory.store(address, value) }</span>)
+}
+
+func (cpu *Cpu) RorA() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ROR A\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.rotate(right, cpu.registers.A, func(value uint8) </span><span class="cov8" title="1">{ cpu.registers.A = value }</span>)
+}
+
+func (cpu *Cpu) Ror(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: ROR $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.rotate(right, cpu.memory.fetch(address), func(value uint8) </span><span class="cov8" title="1">{ cpu.memory.store(address, value) }</span>)
+}
+
+func (cpu *Cpu) Jmp(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: JMP $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.PC = address</span>
+}
+
+func (cpu *Cpu) Jsr(address uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: JSR $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">value := cpu.registers.PC - 1
+
+        cpu.push(uint8(value &gt;&gt; 8))
+        cpu.push(uint8(value))
+
+        cpu.registers.PC = address</span>
+}
+
+func (cpu *Cpu) Rts() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: RTS\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">low := cpu.pull()
+        high := cpu.pull()
+
+        cpu.registers.PC = (uint16(high) &lt;&lt; 8) | uint16(low) + 1</span>
+}
+
+func (cpu *Cpu) branch(address uint16, condition func() bool, cycles *uint16) <span class="cov8" title="1">{
+        if condition() </span><span class="cov8" title="1">{
+                *cycles++
+
+                if !SamePage(cpu.registers.PC, address) </span><span class="cov8" title="1">{
+                        *cycles++
+                }</span>
+
+                <span class="cov8" title="1">cpu.registers.PC = address</span>
+        }
+}
+
+func (cpu *Cpu) Bcc(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BCC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;C == 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bcs(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BCS $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;C != 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Beq(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BEQ $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;Z != 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bmi(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BMI $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;N != 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bne(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BNE $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;Z == 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bpl(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BPL $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;N == 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bvc(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BVC $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;V == 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Bvs(address uint16, cycles *uint16) <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BVS $%04x\n", cpu.registers.PC, address)
+        }</span>
+
+        <span class="cov8" title="1">cpu.branch(address, func() bool </span><span class="cov8" title="1">{ return cpu.registers.P&amp;V != 0 }</span>, cycles)
+}
+
+func (cpu *Cpu) Clc() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CLC\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P &amp;^= C</span>
+}
+
+func (cpu *Cpu) Cld() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CLD\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P &amp;^= D</span>
+}
+
+func (cpu *Cpu) Cli() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CLI\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P &amp;^= I</span>
+}
+
+func (cpu *Cpu) Clv() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: CLV\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P &amp;^= V</span>
+}
+
+func (cpu *Cpu) Sec() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: SEC\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P |= C</span>
+}
+
+func (cpu *Cpu) Sed() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: SED\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P |= D</span>
+}
+
+func (cpu *Cpu) Sei() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: SEI\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P |= I</span>
+}
+
+func (cpu *Cpu) Brk() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: BRK\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.PC++
+
+        cpu.push(uint8(cpu.registers.PC &gt;&gt; 8))
+        cpu.push(uint8(cpu.registers.PC))
+        cpu.push(uint8(cpu.registers.P | B))
+
+        cpu.registers.P |= I
+
+        low := cpu.memory.fetch(0xfffe)
+        high := cpu.memory.fetch(0xffff)
+
+        cpu.registers.PC = (uint16(high) &lt;&lt; 8) | uint16(low)</span>
+}
+
+func (cpu *Cpu) Rti() <span class="cov8" title="1">{
+        if cpu.decode </span><span class="cov0" title="0">{
+                fmt.Printf("  %04x: RTI\n", cpu.registers.PC)
+        }</span>
+
+        <span class="cov8" title="1">cpu.registers.P = Status(cpu.pull())
+
+        low := cpu.pull()
+        high := cpu.pull()
+
+        cpu.registers.PC = (uint16(high) &lt;&lt; 8) | uint16(low)</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package _65go2
+
+type OpCode uint8
+
+type Instruction struct {
+        opcode OpCode
+        exec   func(*Cpu) (cycles uint16)
+}
+
+type InstructionTable map[OpCode]Instruction
+
+func NewInstructionTable() InstructionTable <span class="cov8" title="1">{
+        instructions := make(map[OpCode]Instruction)
+        InstructionTable(instructions).InitInstructions()
+        return instructions
+}</span>
+
+func (instructions InstructionTable) AddInstruction(inst Instruction) <span class="cov8" title="1">{
+        instructions[inst.opcode] = inst
+}</span>
+
+func (instructions InstructionTable) RemoveInstruction(opcode OpCode) <span class="cov0" title="0">{
+        delete(instructions, opcode)
+}</span>
+
+func (instructions InstructionTable) InitInstructions() <span class="cov8" title="1">{
+        // LDA
+
+        //     Immediate
+        instructions.AddInstruction(Instruction{
+                opcode: 0xa9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Lda(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Lda(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Lda(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xad,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Lda(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xbd,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Lda(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Lda(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Lda(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Lda(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // LDX
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa2,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Ldx(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Ldx(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldx(cpu.zeroPageIndexedAddress(cpu.registers.Y))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xae,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldx(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xbe,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldx(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        // LDY
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Ldy(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa4,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Ldy(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb4,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldy(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xac,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldy(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xbc,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ldy(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        // STA
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x85,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Sta(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x95,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sta(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x8d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sta(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x9d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Sta(cpu.absoluteIndexedAddress(cpu.registers.X, nil))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x99,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Sta(cpu.absoluteIndexedAddress(cpu.registers.Y, nil))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x81,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Sta(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x91,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Sta(cpu.indirectIndexedAddress(&amp;cycles))
+                        cycles = 6
+                        return
+                }</span>})
+
+        // STX
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x86,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Stx(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x96,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Stx(cpu.zeroPageIndexedAddress(cpu.registers.Y))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x8e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Stx(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // STY
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x84,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Sty(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x94,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sty(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x8c,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sty(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // TAX
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xaa,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Tax()
+                        return
+                }</span>})
+
+        // TAY
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xa8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Tay()
+                        return
+                }</span>})
+
+        // TXA
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x8a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Txa()
+                        return
+                }</span>})
+
+        // TYA
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x98,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Tya()
+                        return
+                }</span>})
+
+        // TSX
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xba,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Tsx()
+                        return
+                }</span>})
+
+        // TXS
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x9a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Txs()
+                        return
+                }</span>})
+
+        // PHA
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x48,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Pha()
+                        return
+                }</span>})
+
+        // PHP
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x08,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Php()
+                        return
+                }</span>})
+
+        // PLA
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x68,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Pla()
+                        return
+                }</span>})
+
+        // PLP
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x28,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Plp()
+                        return
+                }</span>})
+
+        // AND
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x29,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.And(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x25,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.And(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x35,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.And(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x2d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.And(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x3d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.And(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x39,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.And(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x21,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.And(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x31,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.And(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // EOR
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x49,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Eor(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x45,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Eor(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x55,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Eor(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x4d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Eor(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x5d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Eor(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x59,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Eor(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x41,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Eor(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x51,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Eor(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // ORA
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x09,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Ora(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x05,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Ora(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x15,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ora(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x0d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ora(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x1d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ora(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x19,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Ora(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x01,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Ora(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x11,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Ora(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // BIT
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x24,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Bit(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x2c,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Bit(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // ADC
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x69,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Adc(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x65,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Adc(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x75,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Adc(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x6d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Adc(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x7d,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Adc(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x79,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Adc(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x61,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Adc(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x71,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Adc(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // SBC
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Sbc(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Sbc(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sbc(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xed,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sbc(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xfd,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sbc(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Sbc(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Sbc(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Sbc(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // CMP
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Cmp(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Cmp(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd5,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cmp(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xcd,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cmp(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xdd,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cmp(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        return
+                }</span>})
+
+        //     Absolute,Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd9,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cmp(cpu.absoluteIndexedAddress(cpu.registers.Y, &amp;cycles))
+                        return
+                }</span>})
+
+        //     (Indirect,X)
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Cmp(cpu.indexedIndirectAddress())
+                        return
+                }</span>})
+
+        //     (Indirect),Y
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd1,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Cmp(cpu.indirectIndexedAddress(&amp;cycles))
+                        return
+                }</span>})
+
+        // CPX
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Cpx(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe4,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Cpx(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xec,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cpx(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // CPY
+
+        //     Immediate
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Cpy(cpu.immediateAddress())
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc4,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Cpy(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xcc,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 4
+                        cpu.Cpy(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // INC
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Inc(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Inc(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xee,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Inc(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xfe,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Inc(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // INX
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xe8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Inx()
+                        return
+                }</span>})
+
+        // INY
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Iny()
+                        return
+                }</span>})
+
+        // DEC
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xc6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Dec(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd6,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Dec(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xce,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Dec(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xde,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Dec(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // DEX
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xca,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Dex()
+                        return
+                }</span>})
+
+        // DEY
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x88,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Dey()
+                        return
+                }</span>})
+
+        // ASL
+
+        //     Accumulator
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x0a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.AslA()
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x06,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Asl(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x16,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Asl(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x0e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Asl(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x1e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Asl(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // LSR
+
+        //     Accumulator
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x4a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.LsrA()
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x46,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Lsr(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x56,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Lsr(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x4e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Lsr(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x5e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Lsr(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // ROL
+
+        //     Accumulator
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x2a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.RolA()
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x26,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Rol(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x36,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Rol(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x2e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Rol(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x3e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Rol(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // ROR
+
+        //     Accumulator
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x6a,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.RorA()
+                        return
+                }</span>})
+
+        //     Zero Page
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x66,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Ror(cpu.zeroPageAddress())
+                        return
+                }</span>})
+
+        //     Zero Page,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x76,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Ror(cpu.zeroPageIndexedAddress(cpu.registers.X))
+                        return
+                }</span>})
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x6e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Ror(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Absolute,X
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x7e,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cpu.Ror(cpu.absoluteIndexedAddress(cpu.registers.X, &amp;cycles))
+                        cycles = 7
+                        return
+                }</span>})
+
+        // JMP
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x4c,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 3
+                        cpu.Jmp(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        //     Indirect
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x6c,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 5
+                        cpu.Jmp(cpu.indirectAddress())
+                        return
+                }</span>})
+
+        // JSR
+
+        //     Absolute
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x20,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Jsr(cpu.absoluteAddress())
+                        return
+                }</span>})
+
+        // RTS
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x60,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Rts()
+                        return
+                }</span>})
+
+        // BCC
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x90,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bcc(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BCS
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bcs(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BEQ
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Beq(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BMI
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x30,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bmi(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BNE
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd0,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bne(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BPL
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x10,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bpl(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BVC
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x50,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bvc(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // BVS
+
+        //     Relative
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x70,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Bvs(cpu.relativeAddress(), &amp;cycles)
+                        return
+                }</span>})
+
+        // CLC
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x18,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Clc()
+                        return
+                }</span>})
+
+        // CLD
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xd8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Cld()
+                        return
+                }</span>})
+
+        // CLI
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x58,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Cli()
+                        return
+                }</span>})
+
+        // CLV
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xb8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Clv()
+                        return
+                }</span>})
+
+        // SEC
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x38,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Sec()
+                        return
+                }</span>})
+
+        // SED
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xf8,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Sed()
+                        return
+                }</span>})
+
+        // SEI
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x78,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 2
+                        cpu.Sei()
+                        return
+                }</span>})
+
+        // BRK
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x00,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 7
+                        cpu.Brk()
+                        return
+                }</span>})
+
+        // NOP
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0xea,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov0" title="0">{
+                        cycles = 2
+                        return
+                }</span>})
+
+        // RTI
+
+        //     Implied
+        <span class="cov8" title="1">instructions.AddInstruction(Instruction{
+                opcode: 0x40,
+                exec: func(cpu *Cpu) (cycles uint16) </span><span class="cov8" title="1">{
+                        cycles = 6
+                        cpu.Rti()
+                        return
+                }</span>})
+
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package _65go2
+
+import (
+        "io"
+        "os"
+)
+
+type Memory interface {
+        reset()
+        load(path string)
+        fetch(address uint16) (value uint8)
+        store(address uint16, value uint8) (oldValue uint8)
+}
+
+type BasicMemory [65536]uint8
+
+func NewBasicMemory() *BasicMemory <span class="cov8" title="1">{
+        return &amp;BasicMemory{}
+}</span>
+
+func (mem *BasicMemory) reset() <span class="cov8" title="1">{
+        for i := range mem </span><span class="cov8" title="1">{
+                mem[i] = 0
+        }</span>
+}
+
+func (mem *BasicMemory) fetch(address uint16) (value uint8) <span class="cov8" title="1">{
+        value = mem[address]
+        return
+}</span>
+
+func (mem *BasicMemory) store(address uint16, value uint8) (oldValue uint8) <span class="cov8" title="1">{
+        oldValue = mem[address]
+        mem[address] = value
+        return
+}</span>
+
+func (mem *BasicMemory) load(path string) <span class="cov0" title="0">{
+        fi, err := os.Open(path)
+
+        if err != nil </span><span class="cov0" title="0">{
+                panic(err)
+        }</span>
+
+        <span class="cov0" title="0">defer func() </span><span class="cov0" title="0">{
+                if err := fi.Close(); err != nil </span><span class="cov0" title="0">{
+                        panic(err)
+                }</span>
+        }()
+
+        <span class="cov0" title="0">buf := make([]byte, 65536)
+
+        for </span><span class="cov0" title="0">{
+                n, err := fi.Read(buf)
+
+                if err != nil &amp;&amp; err != io.EOF </span><span class="cov0" title="0">{
+                        panic(err)
+                }</span>
+
+                <span class="cov0" title="0">if n == 0 </span><span class="cov0" title="0">{
+                        break</span>
+                }
+        }
+
+        <span class="cov0" title="0">for i, b := range buf </span><span class="cov0" title="0">{
+                mem[i] = b
+        }</span>
+
+        <span class="cov0" title="0">return</span>
+}
+
+func SamePage(addr1 uint16, addr2 uint16) bool <span class="cov8" title="1">{
+        return (addr1^addr2)&gt;&gt;8 == 0
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible = document.getElementById('file0');
+		files.addEventListener('change', onChange, false);
+		function onChange() {
+			visible.style.display = 'none';
+			visible = document.getElementById(files.value);
+			visible.style.display = 'block';
+			window.scrollTo(0, 0);
+		}
+	})();
+	</script>
+</html>

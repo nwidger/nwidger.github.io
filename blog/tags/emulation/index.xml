@@ -6,7 +6,297 @@
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
-    <updated>2013-12-28 00:00:00 &#43;0000 UTC</updated>
+    <updated>2014-01-04 00:00:00 &#43;0000 UTC</updated>
+    
+    <item>
+      <title>Writing an NES emulator in Go, Part 2</title>
+      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</link>
+      <pubDate>Sat, 04 Jan 2014 00:00:00 UTC</pubDate>
+      <author>Niels Widger</author>
+      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</guid>
+      <description>&lt;p&gt;I&amp;rsquo;m writing an NES emulator in Go and writing posts about it as I go
+along.  If you haven&amp;rsquo;t read it yet, the first post can be
+&lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-1&#34;&gt;found here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Progress&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;ve made significant progress on the 6502 code.  All of the
+instructions have been implemented and the emulator executes each
+instruction in the correct number of cycles, keeping in step with the
+external clock signal.  You can look at the code at the GitHub
+repository &lt;a href=&#34;https://github.com/nwidger/65go2&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Timing&lt;/h2&gt;
+
+&lt;p&gt;The &lt;code&gt;Clock&lt;/code&gt; type hasn&amp;rsquo;t changed very much since the first post.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;
+type Clock struct {
+    rate     time.Duration
+    ticks    uint64
+    ticker   *time.Ticker
+    stopChan chan int
+    waiting  map[uint64][]chan int
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The major change is that the clock now maintains a &lt;code&gt;ticks&lt;/code&gt; field which
+counts the number of cycles elapsed since the clock was started.  The
+clock&amp;rsquo;s &lt;code&gt;start&lt;/code&gt; method kicks off the &lt;code&gt;maintainTime&lt;/code&gt; function in a new
+goroutine.  The new goroutine performs two functions:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;Increment &lt;code&gt;ticks&lt;/code&gt; whenever the ticker fires.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Wake up any other threads waiting for a specific tick to arrive.&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (clock *Clock) maintainTime() {
+    for {
+        select {
+        case &amp;lt;-clock.stopChan:
+            clock.ticker = nil
+            return
+        case _ = &amp;lt;-clock.ticker.C:
+            clock.ticks++
+
+            if Ca, ok := clock.waiting[clock.ticks]; ok {
+                for _, C := range Ca {
+                    C &amp;lt;- 1
+                }
+
+                delete(clock.waiting, clock.ticks)
+            }
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The &lt;code&gt;waiting&lt;/code&gt; field maps ticker values to a slice of channels used to
+signal other threads waiting for that particular clock tick to arrive
+(a slice in Go is an array which grows and shrinks dynamically).&lt;/p&gt;
+
+&lt;p&gt;In CPU&amp;rsquo;s &lt;code&gt;Execute&lt;/code&gt; method, after an opcode executes it returns the
+number of cycles to wait for.  We first multiply this by the CPU clock
+divisor of twelve (the master clock runs at 21.477272Mhz but the CPU
+divides that by twelve to run at 1.789773Mhz) and then wait for this
+many cycles past the current tick using the clock&amp;rsquo;s &lt;code&gt;await&lt;/code&gt; method:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (cpu *Cpu) Execute() (cycles uint16, error error) {
+    ticks := cpu.clock.ticks
+
+    // fetch
+    opcode := OpCode(cpu.memory.fetch(cpu.registers.PC))
+    inst, ok := cpu.instructions[opcode]
+
+    if !ok {
+        return 0, BadOpCodeError(opcode)
+    }
+
+    // execute
+    cpu.registers.PC++
+    cycles = inst.exec(cpu)
+
+    // count cycles
+    cpu.clock.await(ticks + uint64(cycles*cpu.divisor))
+
+    return cycles, nil
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The clock&amp;rsquo;s &lt;code&gt;await&lt;/code&gt; method is very simple.  If the tick we want hasn&amp;rsquo;t
+arrived yet, we append a new buffered channel to the entry in the
+&lt;code&gt;waiting&lt;/code&gt; map for the tick we want and then try to read from the
+channel (that&amp;rsquo;s what &lt;code&gt;&amp;lt;-C&lt;/code&gt; is doing) which will cause us to block.
+When &lt;code&gt;maintainTime&lt;/code&gt; arrives at our tick, it will write an integer into
+the channel thus waking us up and allowing us to return to the
+&lt;code&gt;Execute&lt;/code&gt; frame.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (clock *Clock) await(tick uint64) uint64 {
+    if clock.ticks &amp;lt; tick {
+        C := make(chan int, 1)
+        clock.waiting[tick] = append(clock.waiting[tick], C)
+        &amp;lt;-C
+    }
+
+    return clock.ticks
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Unit Testing in Go&lt;/h2&gt;
+
+&lt;p&gt;I used Go&amp;rsquo;s unit testing framework to write tests for each
+instruction.  Unit testing is provided in Go using the
+&lt;a href=&#34;http://golang.org/pkg/testing/&#34;&gt;testing&lt;/a&gt; package and the
+&lt;a href=&#34;http://golang.org/cmd/go/#hdr-Test_packages&#34;&gt;go test&lt;/a&gt; command.
+There&amp;rsquo;s a short explanation about it
+&lt;a href=&#34;http://golang.org/doc/code.html#Testing&#34;&gt;here&lt;/a&gt;.  You can take a peek
+at the tests
+&lt;a href=&#34;https://github.com/nwidger/65go2/blob/master/instructions_test.go&#34;&gt;here&lt;/a&gt;
+if you want.&lt;/p&gt;
+
+&lt;p&gt;To test each instruction in my 6502 emulator, I first created a new
+file &lt;code&gt;instructions_test.go&lt;/code&gt; (the &lt;code&gt;go test&lt;/code&gt; command runs all tests in
+files that end with &lt;code&gt;_test.go&lt;/code&gt;).  For each instruction, I wrote at
+least one test as a function with a signature like &lt;code&gt;func
+TestLdaImmediate(t *testing.T)&lt;/code&gt;.  The &lt;code&gt;go test&lt;/code&gt; command runs all
+functions with the signature &lt;code&gt;func TestXXX(t *testing.T)&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Since I needed to setup/teardown the CPU and clock for each test, I
+wrote a pair of functions to do this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;package _65go2
+
+import (
+    &amp;quot;testing&amp;quot;
+    &amp;quot;time&amp;quot;
+)
+
+const rate time.Duration = 46 * time.Nanosecond // 21.477272Mhz
+const divisor = 12
+
+var cpu *Cpu
+
+func Setup() {
+    clock := NewClock(rate)
+    cpu = NewCpu(NewBasicMemory(), divisor, clock)
+    cpu.Reset()
+    go clock.start()
+}
+
+func Teardown() {
+    cpu.clock.stop()
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Each test function calls &lt;code&gt;Setup&lt;/code&gt;/&lt;code&gt;Teardown&lt;/code&gt; at the beginning/end of
+each test to ensure everything starts at a well-known state:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func TestLdaImmediate(t *testing.T) {
+    Setup()
+
+    cpu.registers.PC = 0x0100
+
+    cpu.memory.store(0x0100, 0xa9)
+    cpu.memory.store(0x0101, 0xff)
+
+    cpu.Execute()
+
+    if cpu.registers.A != 0xff {
+        t.Error(&amp;quot;Register A is not 0xff&amp;quot;)
+    }
+
+    Teardown()
+}
+
+func TestLdaZeroPage(t *testing.T) {
+    Setup()
+
+    cpu.registers.PC = 0x0100
+
+    cpu.memory.store(0x0100, 0xa5)
+    cpu.memory.store(0x0101, 0x84)
+    cpu.memory.store(0x0084, 0xff)
+
+    cpu.Execute()
+
+    if cpu.registers.A != 0xff {
+        t.Error(&amp;quot;Register A is not 0xff&amp;quot;)
+    }
+
+    Teardown()
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Failing a test is easy, just call &lt;code&gt;t.Error&lt;/code&gt;, passing it a reason
+string.&lt;/p&gt;
+
+&lt;p&gt;The unit tests ensure a number of things about each instruction:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;The instruction modifies the appropriate memory addresses or
+registers&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;The bits of status register &lt;code&gt;P&lt;/code&gt; are set/cleared correctly&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;The instruction executes in the correct number of clock cycles&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Many instructions have multiple opcodes, each using a different
+addressing mode.  There is a test for each opcode to ensure it
+really uses that addressing mode correctly.&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;All in all there are about 270 tests total.  Whenever I make a change
+to the codebase, I can be fairly confident that I haven&amp;rsquo;t broken
+anything major by running the unit tests:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go test
+PASS
+ok      github.com/nwidger/65go2    0.815s
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I found the code coverage tool very useful while writing my tests.
+This feature works by writing a coverage profile to disk when &lt;code&gt;go
+test&lt;/code&gt; is run.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go test -coverprofile=coverage.out
+PASS
+coverage: 89.9% of statements
+ok      github.com/nwidger/65go2    0.830s
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Later, &lt;code&gt;go tool cover&lt;/code&gt; can use a coverage profile to display coverage
+information either as a simple textfile or an HTML page.  The textfile
+format is a simple table with percentages for each function:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go tool cover -func=coverage.out
+github.com/nwidger/65go2/cpu.go:        absoluteIndexedAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        indexedIndirectAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        indirectIndexedAddress  100.0%
+github.com/nwidger/65go2/cpu.go:        Lda         66.7%
+github.com/nwidger/65go2/cpu.go:        Ldx         66.7%
+github.com/nwidger/65go2/cpu.go:        Ldy         66.7%
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The HTML page shows the code coverage of your tests in an extremely
+visual manner.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;go tool cover -html=coverage.out
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can see example output of &lt;code&gt;go tool cover -html&lt;/code&gt; on
+&lt;a href=&#34;/html/coverage.html&#34;&gt;this page&lt;/a&gt;.  You can select the file to view
+from the pull-down at the top-left of the page.&lt;/p&gt;
+
+&lt;h2&gt;Test Programs&lt;/h2&gt;
+
+&lt;p&gt;I also tried running a
+&lt;a href=&#34;http://2m5.de/6502_Emu/6502_functional_tests.zip&#34;&gt;6502 functional test program&lt;/a&gt;
+inside my emulator but kept running into problems.  The documentation
+says the &lt;code&gt;PC&lt;/code&gt; register should be set to &lt;code&gt;$1000&lt;/code&gt; but after looking at
+the test image in a hex editor (thanks
+&lt;a href=&#34;https://www.gnu.org/software/emacs/manual/html_node/emacs/Editing-Binary-Files.html&#34;&gt;hexl-mode&lt;/a&gt;)
+that location contains an illegal opcode.  Furthermore, after
+comparing the assembler file with the assembled binary image, it&amp;rsquo;s
+clear that some of the absolute addresses in &lt;code&gt;JMP&lt;/code&gt; instructions are
+off but 4-10 bytes.  Either way, I was unable to get the test program
+to run without encountering an illegal opcode and crashing.
+Fortunately, I did get it to run enough to at least assure me that the
+basic fetch/execute cycle works properly.  I may go back and try to
+get a test program running, as it would give me even greater assurance
+that everything is implemented correctly.&lt;/p&gt;
+
+&lt;h2&gt;Up Next&lt;/h2&gt;
+
+&lt;p&gt;The next big implementation job is to start implementing the PPU
+(Picture Processing Unit) used in the NES, which is a 2C02 chip.  The
+PPU has eight registers which are mapped into the CPU&amp;rsquo;s address space
+between &lt;code&gt;$2000&lt;/code&gt; and &lt;code&gt;$2007&lt;/code&gt;.  I have a feeling I still have a lot of
+reading to do before I&amp;rsquo;ll understand how the PPU works enough to start
+implementing it.  I&amp;rsquo;m still on the fence about how to do the memory
+mapping, but I have some ideas.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Writing an NES emulator in Go, Part 1</title>
