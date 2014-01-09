@@ -17,7 +17,7 @@ I've made significant progress on the 6502 code.  All of the
 instructions have been implemented and the emulator executes each
 instruction in the correct number of cycles, keeping in step with the
 external clock signal.  You can look at the code at the GitHub
-repository [here](https://github.com/nwidger/65go2).
+repository [here](https://github.com/nwidger/m65go2).
 
 ## Timing
 
@@ -127,7 +127,7 @@ instruction.  Unit testing is provided in Go using the
 There's a short explanation about it
 [here](http://golang.org/doc/code.html#Testing).  You can take a peek
 at the tests
-[here](https://github.com/nwidger/65go2/blob/master/instructions_test.go)
+[here](https://github.com/nwidger/m65go2/blob/master/instructions_test.go)
 if you want.
 
 To test each instruction in my 6502 emulator, I first created a new
@@ -141,7 +141,7 @@ Since I needed to setup/teardown the CPU and clock for each test, I
 wrote a pair of functions to do this:
 
 ``` go
-package _65go2
+package m65go2
 
 import (
 	"testing"
@@ -226,9 +226,9 @@ to the codebase, I can be fairly confident that I haven't broken
 anything major by running the unit tests:
 
 ``` no-highlight
-macros:65go2 nwidger$ go test
+macros:m65go2 nwidger$ go test
 PASS
-ok  	github.com/nwidger/65go2	0.815s
+ok  	github.com/nwidger/m65go2	0.815s
 ```
 
 I found the code coverage tool very useful while writing my tests.
@@ -236,10 +236,10 @@ This feature works by writing a coverage profile to disk when `go
 test` is run.
 
 ``` no-highlight
-macros:65go2 nwidger$ go test -coverprofile=coverage.out
+macros:m65go2 nwidger$ go test -coverprofile=coverage.out
 PASS
 coverage: 89.9% of statements
-ok  	github.com/nwidger/65go2	0.830s
+ok  	github.com/nwidger/m65go2	0.830s
 ```
 
 Later, `go tool cover` can use a coverage profile to display coverage
@@ -247,13 +247,13 @@ information either as a simple textfile or an HTML page.  The textfile
 format is a simple table with percentages for each function:
 
 ``` no-highlight
-macros:65go2 nwidger$ go tool cover -func=coverage.out
-github.com/nwidger/65go2/cpu.go:		absoluteIndexedAddress	100.0%
-github.com/nwidger/65go2/cpu.go:		indexedIndirectAddress	100.0%
-github.com/nwidger/65go2/cpu.go:		indirectIndexedAddress	100.0%
-github.com/nwidger/65go2/cpu.go:		Lda			66.7%
-github.com/nwidger/65go2/cpu.go:		Ldx			66.7%
-github.com/nwidger/65go2/cpu.go:		Ldy			66.7%
+macros:m65go2 nwidger$ go tool cover -func=coverage.out
+github.com/nwidger/m65go2/cpu.go:		absoluteIndexedAddress	100.0%
+github.com/nwidger/m65go2/cpu.go:		indexedIndirectAddress	100.0%
+github.com/nwidger/m65go2/cpu.go:		indirectIndexedAddress	100.0%
+github.com/nwidger/m65go2/cpu.go:		Lda			66.7%
+github.com/nwidger/m65go2/cpu.go:		Ldx			66.7%
+github.com/nwidger/m65go2/cpu.go:		Ldy			66.7%
 ```
 
 The HTML page shows the code coverage of your tests in an extremely

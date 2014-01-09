@@ -17,7 +17,7 @@ them for many years.  Plus it gives me a good reason to program in Go
 some more.  I plan to do a post every so often as the emulator
 progresses.  Hopefully I don't lose interest half-way through!  I'll
 be putting the source code for the project up on
-[this GitHub](https://github.com/nwidger/65go2) repository.
+[this GitHub](https://github.com/nwidger/m65go2) repository.
 
 ## Architecture
 

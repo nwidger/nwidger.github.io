@@ -24,7 +24,7 @@ along.  If you haven&amp;rsquo;t read it yet, the first post can be
 instructions have been implemented and the emulator executes each
 instruction in the correct number of cycles, keeping in step with the
 external clock signal.  You can look at the code at the GitHub
-repository &lt;a href=&#34;https://github.com/nwidger/65go2&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
+repository &lt;a href=&#34;https://github.com/nwidger/m65go2&#34;&gt;here&lt;/a&gt;.&lt;/p&gt;
 
 &lt;h2&gt;Timing&lt;/h2&gt;
 
@@ -132,7 +132,7 @@ instruction.  Unit testing is provided in Go using the
 There&amp;rsquo;s a short explanation about it
 &lt;a href=&#34;http://golang.org/doc/code.html#Testing&#34;&gt;here&lt;/a&gt;.  You can take a peek
 at the tests
-&lt;a href=&#34;https://github.com/nwidger/65go2/blob/master/instructions_test.go&#34;&gt;here&lt;/a&gt;
+&lt;a href=&#34;https://github.com/nwidger/m65go2/blob/master/instructions_test.go&#34;&gt;here&lt;/a&gt;
 if you want.&lt;/p&gt;
 
 &lt;p&gt;To test each instruction in my 6502 emulator, I first created a new
@@ -145,7 +145,7 @@ functions with the signature &lt;code&gt;func TestXXX(t *testing.T)&lt;/code&gt;
 &lt;p&gt;Since I needed to setup/teardown the CPU and clock for each test, I
 wrote a pair of functions to do this:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;package _65go2
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;package m65go2
 
 import (
     &amp;quot;testing&amp;quot;
@@ -230,32 +230,32 @@ really uses that addressing mode correctly.&lt;/p&gt;&lt;/li&gt;
 to the codebase, I can be fairly confident that I haven&amp;rsquo;t broken
 anything major by running the unit tests:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go test
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:m65go2 nwidger$ go test
 PASS
-ok      github.com/nwidger/65go2    0.815s
+ok      github.com/nwidger/m65go2   0.815s
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;I found the code coverage tool very useful while writing my tests.
 This feature works by writing a coverage profile to disk when &lt;code&gt;go
 test&lt;/code&gt; is run.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go test -coverprofile=coverage.out
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:m65go2 nwidger$ go test -coverprofile=coverage.out
 PASS
 coverage: 89.9% of statements
-ok      github.com/nwidger/65go2    0.830s
+ok      github.com/nwidger/m65go2   0.830s
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;Later, &lt;code&gt;go tool cover&lt;/code&gt; can use a coverage profile to display coverage
 information either as a simple textfile or an HTML page.  The textfile
 format is a simple table with percentages for each function:&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:65go2 nwidger$ go tool cover -func=coverage.out
-github.com/nwidger/65go2/cpu.go:        absoluteIndexedAddress  100.0%
-github.com/nwidger/65go2/cpu.go:        indexedIndirectAddress  100.0%
-github.com/nwidger/65go2/cpu.go:        indirectIndexedAddress  100.0%
-github.com/nwidger/65go2/cpu.go:        Lda         66.7%
-github.com/nwidger/65go2/cpu.go:        Ldx         66.7%
-github.com/nwidger/65go2/cpu.go:        Ldy         66.7%
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;macros:m65go2 nwidger$ go tool cover -func=coverage.out
+github.com/nwidger/m65go2/cpu.go:       absoluteIndexedAddress  100.0%
+github.com/nwidger/m65go2/cpu.go:       indexedIndirectAddress  100.0%
+github.com/nwidger/m65go2/cpu.go:       indirectIndexedAddress  100.0%
+github.com/nwidger/m65go2/cpu.go:       Lda         66.7%
+github.com/nwidger/m65go2/cpu.go:       Ldx         66.7%
+github.com/nwidger/m65go2/cpu.go:       Ldy         66.7%
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;The HTML page shows the code coverage of your tests in an extremely
@@ -314,7 +314,7 @@ them for many years.  Plus it gives me a good reason to program in Go
 some more.  I plan to do a post every so often as the emulator
 progresses.  Hopefully I don&amp;rsquo;t lose interest half-way through!  I&amp;rsquo;ll
 be putting the source code for the project up on
-&lt;a href=&#34;https://github.com/nwidger/65go2&#34;&gt;this GitHub&lt;/a&gt; repository.&lt;/p&gt;
+&lt;a href=&#34;https://github.com/nwidger/m65go2&#34;&gt;this GitHub&lt;/a&gt; repository.&lt;/p&gt;
 
 &lt;h2&gt;Architecture&lt;/h2&gt;
 
