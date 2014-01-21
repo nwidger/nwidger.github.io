@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Emulation on nwidger </title>
-    <link>file:///Users/nwidger/Projects/nwidger.github.io/tags/emulation.xml</link>
+    <link>http://nwidger.github.io/tags/emulation.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
@@ -10,10 +10,10 @@
     
     <item>
       <title>Writing an NES emulator in Go, Part 3</title>
-      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</link>
+      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</link>
       <pubDate>Mon, 20 Jan 2014 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</guid>
+      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</guid>
       <description>&lt;p&gt;I&amp;rsquo;m writing an NES emulator in Go and writing posts about it as I go
 along.  If you haven&amp;rsquo;t read them yet, go check out the
 &lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-1&#34;&gt;first&lt;/a&gt; and
@@ -386,10 +386,10 @@ will be my next step.&lt;/p&gt;
     
     <item>
       <title>Writing an NES emulator in Go, Part 2</title>
-      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</link>
+      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</link>
       <pubDate>Sat, 04 Jan 2014 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</guid>
+      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</guid>
       <description>&lt;p&gt;I&amp;rsquo;m writing an NES emulator in Go and writing posts about it as I go
 along.  If you haven&amp;rsquo;t read it yet, the first post can be
 &lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-1&#34;&gt;found here&lt;/a&gt;.&lt;/p&gt;
@@ -676,10 +676,10 @@ mapping, but I have some ideas.&lt;/p&gt;
     
     <item>
       <title>Writing an NES emulator in Go, Part 1</title>
-      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</link>
+      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</link>
       <pubDate>Sat, 28 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</guid>
+      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</guid>
       <description>&lt;h2&gt;Motivation&lt;/h2&gt;
 
 &lt;p&gt;I&amp;rsquo;ve decided to write my own NES emulator in Go.  I know that many,

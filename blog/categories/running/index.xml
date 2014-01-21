@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Running on nwidger </title>
-    <link>file:///Users/nwidger/Projects/nwidger.github.io/categories/running.xml</link>
+    <link>http://nwidger.github.io/categories/running.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
@@ -10,10 +10,10 @@
     
     <item>
       <title>Running form focuses</title>
-      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/running-form-focuses/</link>
+      <link>http://nwidger.github.io/post/running-form-focuses/</link>
       <pubDate>Fri, 20 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/running-form-focuses/</guid>
+      <guid>http://nwidger.github.io/post/running-form-focuses/</guid>
       <description>&lt;p&gt;This post lays out the form focuses I try to concentrate on when I&amp;rsquo;m
 out for a run.  A lot of the core ideas are from the
 &lt;a href=&#34;http://www.chirunning.com/&#34;&gt;ChiRunning&lt;/a&gt; method.  I have also found
