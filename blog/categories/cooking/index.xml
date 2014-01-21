@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Cooking on nwidger </title>
-    <link>http://nwidger.github.io/categories/cooking.xml</link>
+    <link>file:///Users/nwidger/Projects/nwidger.github.io/categories/cooking.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
@@ -10,10 +10,10 @@
     
     <item>
       <title>Neeman-Marcus Cookies</title>
-      <link>http://nwidger.github.io/post/neeman-marcus-cookies</link>
+      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/neeman-marcus-cookies</link>
       <pubDate>Sat, 21 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>http://nwidger.github.io/post/neeman-marcus-cookies</guid>
+      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/neeman-marcus-cookies</guid>
       <description>&lt;p&gt;I got this recipe from my father who used to make these all the time.
 I&amp;rsquo;ve made them for various events the last few years and people seem
 to like them.&lt;/p&gt;

@@ -2,18 +2,394 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Emulation on nwidger </title>
-    <link>http://nwidger.github.io/tags/emulation.xml</link>
+    <link>file:///Users/nwidger/Projects/nwidger.github.io/tags/emulation.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
-    <updated>2014-01-04 00:00:00 &#43;0000 UTC</updated>
+    <updated>2014-01-20 00:00:00 &#43;0000 UTC</updated>
+    
+    <item>
+      <title>Writing an NES emulator in Go, Part 3</title>
+      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</link>
+      <pubDate>Mon, 20 Jan 2014 00:00:00 UTC</pubDate>
+      <author>Niels Widger</author>
+      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-3/</guid>
+      <description>&lt;p&gt;I&amp;rsquo;m writing an NES emulator in Go and writing posts about it as I go
+along.  If you haven&amp;rsquo;t read them yet, go check out the
+&lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-1&#34;&gt;first&lt;/a&gt; and
+&lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-2&#34;&gt;second&lt;/a&gt; post.&lt;/p&gt;
+
+&lt;h2&gt;Package Layout&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;ve been trying to implement each major NES component as a reuseable
+module.  Each module is stored in a separate GitHub repository.
+Here&amp;rsquo;s the layout I&amp;rsquo;m using right now:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;&lt;code&gt;m65go2&lt;/code&gt; - &lt;a href=&#34;https://github.com/nwidger/m65go2/&#34;&gt;GitHub&lt;/a&gt; - The
+MOS 6502 CPU.  Defines the &lt;code&gt;M6502&lt;/code&gt; type.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;rp2ago3&lt;/code&gt; - &lt;a href=&#34;https://github.com/nwidger/rp2ago3/&#34;&gt;GitHub&lt;/a&gt; - The
+RP2A03 CPU (a MOS 6502 chip plus an APU) used in the NES.  Embeds an
+&lt;code&gt;M6502&lt;/code&gt; instance from the &lt;code&gt;m65go2&lt;/code&gt; package along with a new &lt;code&gt;APU&lt;/code&gt;
+type to form a new &lt;code&gt;RP2A03&lt;/code&gt; type.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&lt;code&gt;rp2cgo2&lt;/code&gt; - &lt;a href=&#34;https://github.com/nwidger/rp2cgo2/&#34;&gt;GitHub&lt;/a&gt; - The
+RP2C02 PPU used in the NES.&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Once everything is implemented, I will create a fourth package called
+something clever like &lt;code&gt;nintengo&lt;/code&gt; which combines &lt;code&gt;RP2A03&lt;/code&gt; and &lt;code&gt;RP2C02&lt;/code&gt;
+instances to form a full NES.&lt;/p&gt;
+
+&lt;p&gt;Here&amp;rsquo;s a diagram for how it all fits together:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;+---------------------+
+|       RP2A03        |
+| +-------+ +-------+ |
+| | M6502 | |  APU  | |
+| +-------+ +-------+ |
++---------------------+
+                |
+               /
+---Clock------*
+21.477272Mhz   \
+                |
++---------------------+
+|                     |
+|       RP2C02        |
+|                     |
++---------------------+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Clock Divisors&lt;/h2&gt;
+
+&lt;p&gt;The &lt;code&gt;rp2ago3&lt;/code&gt; package must divide the 21.477272Mhz external clock
+signal by twelve internally to produce the 1.789773Mhz signal used by
+the M6502/APU chips.  To do this, I created a &lt;code&gt;Clocker&lt;/code&gt; interface
+which implements the methods of &lt;code&gt;Clock&lt;/code&gt;, the basic clock type I
+created for the &lt;code&gt;m65go2&lt;/code&gt; package:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;// Represents a clock signal for an IC.  Once a Clock is started, it
+// maintains a &#39;ticks&#39; counters which is incremented at a specific
+// interval.
+type Clocker interface {
+    // Returns the current value of the Clocker&#39;s ticks counter.
+    Ticks() uint64
+
+    // Starts the clock
+    Start() (ticks uint64)
+
+    // Stops the clock
+    Stop()
+
+    // Blocks the calling thread until the given tick has arrived.
+    // Returns immediately if the clock has already passed the
+    // given tick.
+    Await(tick uint64) (ticks uint64)
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Obviously, the base &lt;code&gt;Clock&lt;/code&gt; type implements this interface.  Next, I
+created a &lt;code&gt;Divider&lt;/code&gt; type which gets passed a &lt;code&gt;Clocker&lt;/code&gt; instance and
+divisor on creation:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;// Returns a pointer to a new DividerCLock which divides the tick rate
+// of &#39;master&#39; Clocker by &#39;divisor&#39;.
+func NewDivider(master Clocker, divisor uint64) *Divider {
+    return &amp;amp;Divider{divisor: divisor, master: master}
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;Divider&lt;/code&gt; implements its own version of &lt;code&gt;Start&lt;/code&gt;, &lt;code&gt;Stop&lt;/code&gt; and &lt;code&gt;Await&lt;/code&gt;
+which use the base clock but ensure the module using a &lt;code&gt;Divider&lt;/code&gt; will
+only see a tick after every Nth tick from the base clock:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (clock *Divider) Ticks() uint64 {
+    return clock.master.Ticks() / clock.divisor
+}
+
+func (clock *Divider) Start() (ticks uint64) {
+    return clock.master.Start() / clock.divisor
+}
+
+func (clock *Divider) Stop() {
+    clock.master.Stop()
+}
+
+func (clock *Divider) Await(tick uint64) (ticks uint64) {
+    return clock.master.Await(tick*clock.divisor) / clock.divisor
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;When I create a new &lt;code&gt;RP2A03&lt;/code&gt; instance, I create a &lt;code&gt;Divider&lt;/code&gt; instance
+to divide the base clock passed into &lt;code&gt;NewRP2A03&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func NewRP2A03(mem *MappedMemory, clock m65go2.Clocker, divisor uint64) *RP2A03 {
+    ...
+    divider := m65go2.NewDivider(clock, divisor)
+    cpu := m65go2.NewM6502(mem, divider)
+    apu := NewAPU(divider)
+    ...
+    return &amp;amp;RP2A03{memory: mem, M6502: cpu, APU: apu, clock: divider}
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Memory Maps&lt;/h2&gt;
+
+&lt;p&gt;I struggled for a while trying to figure how best to implement the
+memory mapped I/O used on the NES.  Since the MOS 6502 has no I/O
+lines into it, both the APU and PPU must map their internal registers
+into the 6502&amp;rsquo;s address space.  The solution I wound up using is very
+simple, but seems to be working so far.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;m65go2&lt;/code&gt; package defines the &lt;code&gt;Memory&lt;/code&gt; interface:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;// Represents the RAM memory available to the 6502 CPU.  Stores 8-bit
+// values using a 16-bit address for a total of 65,536 possible 8-bit
+// values.
+type Memory interface {
+    Reset()                                             // Sets all memory locations to zero
+    Fetch(address uint16) (value uint8)                 // Returns the value stored at the given memory address
+    Store(address uint16, value uint8) (oldValue uint8) // Stores the value at the given memory address
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The &lt;code&gt;rp2ago3&lt;/code&gt; package defines the &lt;code&gt;MappedMemory&lt;/code&gt; type which implements
+the &lt;code&gt;Memory&lt;/code&gt; interface:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;type MappedMemory struct {
+    maps map[uint16]m65go2.Memory
+    m65go2.Memory
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The second field &lt;code&gt;m65go2.Memory&lt;/code&gt; does not have a name since it is an
+&amp;ldquo;anonymous&amp;rdquo; or &amp;ldquo;embedded&amp;rdquo; field in Go parlance.  When a field is
+declared without a name it is &amp;ldquo;embedded&amp;rdquo; meaning the new type
+automatically gains the functions implemented by the embedded type
+without the tedium of having to add a bunch of wrapper methods like
+this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (parent MyParentType) myFunction() {
+        parent.embeddedField.myFunction()
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Since Go provides interfaces but not classes with the ability to
+extend an existing class, embedding gets you halfway there by letting
+you create a new type that automatically implements all methods (and
+therefore all interfaces) provided by the embedded type.&lt;/p&gt;
+
+&lt;p&gt;Anyways, the &lt;code&gt;maps&lt;/code&gt; field in the &lt;code&gt;MappedMemory&lt;/code&gt; struct stores the
+addresses in memory which are mapped elsewhere.  For each mapped
+address, we store a &lt;code&gt;Memory&lt;/code&gt; instance.  When &lt;code&gt;Fetch&lt;/code&gt; or &lt;code&gt;Store&lt;/code&gt; is
+called on the &lt;code&gt;MappedMemory&lt;/code&gt; instance, we first check if the address
+is mapped to another &lt;code&gt;Memory&lt;/code&gt; instance and pass it off, otherwise we
+call the appropriate method of the embedded &lt;code&gt;Memory&lt;/code&gt; instance:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func (mem *MappedMemory) Fetch(address uint16) (value uint8) {
+    if mmap, ok := mem.maps[address]; ok {
+        return mmap.Fetch(address)
+    }
+
+    return mem.Memory.Fetch(address)
+}
+
+func (mem *MappedMemory) Store(address uint16, value uint8) (oldValue uint8) {
+    if mmap, ok := mem.maps[address]; ok {
+        return mmap.Store(address, value)
+    }
+
+    return mem.Memory.Store(address, value)
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The end result is that when I create a new &lt;code&gt;RP2A03&lt;/code&gt; CPU instance, I
+can map the APU&amp;rsquo;s registers to the appropriate addresses in memory:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func NewRP2A03(mem *MappedMemory, clock m65go2.Clocker, divisor uint64) *RP2A03 {
+    ...
+    apu := NewAPU(divider)
+
+    // APU memory maps
+    mem.AddMap([]uint16{
+        0x4000, 0x4001, 0x4002, 0x4003, 0x4004,
+        0x4005, 0x4006, 0x4007, 0x4008, 0x400a,
+        0x400b, 0x400c, 0x400e, 0x400f, 0x4010,
+        0x4011, 0x4012, 0x4013, 0x4015, 0x4017,
+    }, apu)
+
+    return &amp;amp;RP2A03{memory: mem, M6502: cpu, APU: apu, clock: divider}
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, any &lt;code&gt;Fetch&lt;/code&gt; or &lt;code&gt;Store&lt;/code&gt; calls for those addresses will be
+redirected to the &lt;code&gt;Fetch&lt;/code&gt; or &lt;code&gt;Store&lt;/code&gt; methods implemented by &lt;code&gt;APU&lt;/code&gt;.
+These methods know which addresses map to which registers,
+i.e. &lt;code&gt;0x4000-0x4003&lt;/code&gt; maps to the pulse 1 channel registers.&lt;/p&gt;
+
+&lt;h2&gt;Package Visibility&lt;/h2&gt;
+
+&lt;p&gt;When I initially began work on the emulator, I had a single Go
+package.  Now that there are three separate packages I need to put
+more thought into what fields/symbols of a package are exported.  In
+Go, only exported fields/symbols are visible outside of a package.  Go
+really only has
+&lt;a href=&#34;http://golang.org/ref/spec#Exported_identifiers&#34;&gt;one rule&lt;/a&gt; that
+determines what gets exported: capitalize it.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;type notExportedType struct { } // not exported
+type ExportedType struct { }    // exported
+
+type OtherExportedType struct {
+        ExportedInt     int     // exported
+        notExportedBool bool    // not exported
+}
+
+func notExportedFunc() { }      // not exported
+func ExportedFunction() { }     // exported
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;I spent some time going through the types I had created and modifying
+their fields/methods to be exported where I deemed appropriate.  Some
+obvious ones were exporting &lt;code&gt;M6502&lt;/code&gt;&amp;rsquo;s &lt;code&gt;Register&lt;/code&gt; and &lt;code&gt;Memory&lt;/code&gt; fields,
+since an external program trying to use the module would probably find
+it convenient to actually be able to read/write the CPU&amp;rsquo;s registers
+and access its memory.&lt;/p&gt;
+
+&lt;h2&gt;Decimal Mode&lt;/h2&gt;
+
+&lt;p&gt;I&amp;rsquo;m not sure why I felt the need to add decimal mode support to the
+&lt;code&gt;m65go2&lt;/code&gt; package, but I added it for completeness anyways.  The MOS
+6502 supported an alternative form of addition/subtraction for the
+&lt;code&gt;ADC&lt;/code&gt; (addition with carry) and &lt;code&gt;SBC&lt;/code&gt; (subtraction with carry)
+instructions in which arguments are expected to be in packed binary
+coded decimal (BCD) form instead of the normal one&amp;rsquo;s compliment
+representation.&lt;/p&gt;
+
+&lt;p&gt;Under normal binary arithmetic, you would expect to get results like
+this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-hightlight&#34;&gt;0x45 + 0x25 = 0x6a
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;whereas if you&amp;rsquo;re in decimal mode and using BCD values, you get
+results like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-hightlight&#34;&gt;0x45 + 0x25 = 0x70
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In decimal mode, the CPU interprets each argument as a byte
+representing a two digit number in base ten, where each digit is
+stored using 4-bits.&lt;/p&gt;
+
+&lt;p&gt;I referenced &lt;a href=&#34;http://www.piumarta.com/software/lib6502/&#34;&gt;lib6502&lt;/a&gt;&amp;rsquo;s
+implementation of BCD arithmetic and relied on it pretty heavily to
+get things working.  Of course, there are probably plenty of bugs
+remaining.  But it doesn&amp;rsquo;t matter too much since the RP2A03 CPU used
+in the NES didn&amp;rsquo;t support decimal mode, apparently to
+&lt;a href=&#34;https://en.wikipedia.org/wiki/Nintendo_Entertainment_System_technical_specifications#Central_processing_unit&#34;&gt;avoid patent payments&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;NES Test ROM&lt;/h2&gt;
+
+&lt;p&gt;In one of the previous posts I lamented not being able to get a test
+ROM running in my emulator.  I persevered and did eventually get the
+&lt;code&gt;nestest&lt;/code&gt; test program from
+&lt;a href=&#34;http://wiki.nesdev.com/w/index.php/Emulator_tests&#34;&gt;this page&lt;/a&gt; to run.
+I added it to the &lt;code&gt;m65go2&lt;/code&gt; repository along with the expected output
+and
+&lt;a href=&#34;https://github.com/nwidger/m65go2/blob/master/test-roms/nestest.txt&#34;&gt;this text file&lt;/a&gt;.
+From the file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;This here is a pretty much all inclusive test suite for a NES CPU.
+It was designed to test almost every combination of flags, instructions,
+and registers. Some of these tests are very difficult, and so far,
+Nesten and Nesticle failed it. Nintendulator passes, as does a real
+NES (naturally). I haven&#39;t tested it with any more emualtors yet.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The only issue in using the test program was the question of how to
+validate it.  The file comes with
+&lt;a href=&#34;https://github.com/nwidger/m65go2/blob/master/test-roms/nestest.log&#34;&gt;the expected debug output from Nintendulator&lt;/a&gt;,
+but it would be incredibly tedious to go through line by line and make
+sure my emulator places the same values in memory and modifies each
+register correctly for each instruction.  How can I integrate this
+test program into the rest of my &lt;code&gt;go test&lt;/code&gt; unit tests?  The road I
+went down was replicating the debug output inside my emulator to match
+what Nintendulator produces.  For each instruction, Nintendulator
+prints a line like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;no-highlight&#34;&gt;*- instruction address (PC register)
+|
+|     *- opcode + args
+|     |
+|     |         *- mneumonic + decoded args
+|     |         |
+|     |         |                               *- pre-execution registers
+|     |         |                               |
+C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;After perhaps three days of work the emulator now produces the same
+output as Nintendulator, passes each test and implements all of the
+unofficial opcodes tested by the program.  In go, an &amp;ldquo;example&amp;rdquo; test
+function can be associated with an expected output that &lt;code&gt;go test&lt;/code&gt; will
+verify when running the test.  I created an example test which runs
+the test program and put the Nintendulator log contents as the
+expected output.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;go&#34;&gt;func ExampleRom() {
+    Setup()
+
+    cpu.DisableDecimalMode()
+
+    cpu.Registers.P = 0x24
+    cpu.Registers.SP = 0xfd
+    cpu.Registers.PC = 0xc000
+
+    cpu.Memory.(*BasicMemory).load(&amp;quot;test-roms/nestest.nes&amp;quot;)
+
+    cpu.Memory.Store(0x4004, 0xff)
+    cpu.Memory.Store(0x4005, 0xff)
+    cpu.Memory.Store(0x4006, 0xff)
+    cpu.Memory.Store(0x4007, 0xff)
+    cpu.Memory.Store(0x4015, 0xff)
+
+    cpu.decode.enabled = true
+
+    cpu.Run()
+
+    Teardown()
+
+    // Output:
+    // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD
+    // C5F5  A2 00     LDX #$00                        A:00 X:00 Y:00 P:24 SP:FD
+    // C5F7  86 00     STX $00 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5F9  86 10     STX $10 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5FB  86 11     STX $11 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5FD  20 2D C7  JSR $C72D                       A:00 X:00 Y:00 P:26 SP:FD
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;All the work was definitely worth as it makes me much more confident
+that most things are implemented correctly.&lt;/p&gt;
+
+&lt;h2&gt;Up Next&lt;/h2&gt;
+
+&lt;p&gt;Now that the CPU has been fairly well tested, it&amp;rsquo;s time to move on.  I
+still need to implement the RP2C02, the PPU used in the NES, so that
+will be my next step.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Writing an NES emulator in Go, Part 2</title>
-      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</link>
+      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</link>
       <pubDate>Sat, 04 Jan 2014 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</guid>
+      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/</guid>
       <description>&lt;p&gt;I&amp;rsquo;m writing an NES emulator in Go and writing posts about it as I go
 along.  If you haven&amp;rsquo;t read it yet, the first post can be
 &lt;a href=&#34;/post/writing-an-nes-emulator-in-go-part-1&#34;&gt;found here&lt;/a&gt;.&lt;/p&gt;
@@ -300,10 +676,10 @@ mapping, but I have some ideas.&lt;/p&gt;
     
     <item>
       <title>Writing an NES emulator in Go, Part 1</title>
-      <link>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</link>
+      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</link>
       <pubDate>Sat, 28 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>http://nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</guid>
+      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-1/</guid>
       <description>&lt;h2&gt;Motivation&lt;/h2&gt;
 
 &lt;p&gt;I&amp;rsquo;ve decided to write my own NES emulator in Go.  I know that many,

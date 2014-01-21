@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Niels Widger">
+    <link rel="shortcut icon" href="file:///Users/nwidger/Projects/nwidger.github.io/blog/images/alert.red.gif">
+
+    <title>Writing an NES emulator in Go, Part 3</title>
+    <link href="" rel="alternate" type="application/rss+xml" title="nwidger" />
+
+        <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/jquery.tocify.css" rel="stylesheet"/>
+    <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/bootstrap.min.css" rel="stylesheet"/>
+    <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/bootstrap-theme.min.css" rel="stylesheet"/>
+    <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/highlightjs/default.css" rel="stylesheet"/>
+    <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/lightbox.css" rel="stylesheet" />
+    <link href="file:///Users/nwidger/Projects/nwidger.github.io/blog/stylesheets/style.css" rel="stylesheet"/>
+
+
+    
+    
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+	  <a class="navbar-brand" href="file:///Users/nwidger/Projects/nwidger.github.io/blog/"><span class="glyphicon glyphicon-exclamation-sign"></span>&nbsp; nwidger</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/post">Posts</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/categories">Categories</a></li>
+            <li><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/tags">Tags</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+
+
+
+<div class="row">
+  <div class="col-md-3" id="sidebar"><div id="toc"></div></div>
+
+  <div class="col-md-9">
+          <div class="page-header">
+            <h1>Writing an NES emulator in Go, Part 3</h1>
+          </div>
+
+          <p>I&rsquo;m writing an NES emulator in Go and writing posts about it as I go
+along.  If you haven&rsquo;t read them yet, go check out the
+<a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/post/writing-an-nes-emulator-in-go-part-1">first</a> and
+<a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/post/writing-an-nes-emulator-in-go-part-2">second</a> post.</p>
+
+<h2>Package Layout</h2>
+
+<p>I&rsquo;ve been trying to implement each major NES component as a reuseable
+module.  Each module is stored in a separate GitHub repository.
+Here&rsquo;s the layout I&rsquo;m using right now:</p>
+
+<ul>
+<li><p><code>m65go2</code> - <a href="https://github.com/nwidger/m65go2/">GitHub</a> - The
+MOS 6502 CPU.  Defines the <code>M6502</code> type.</p></li>
+
+<li><p><code>rp2ago3</code> - <a href="https://github.com/nwidger/rp2ago3/">GitHub</a> - The
+RP2A03 CPU (a MOS 6502 chip plus an APU) used in the NES.  Embeds an
+<code>M6502</code> instance from the <code>m65go2</code> package along with a new <code>APU</code>
+type to form a new <code>RP2A03</code> type.</p></li>
+
+<li><p><code>rp2cgo2</code> - <a href="https://github.com/nwidger/rp2cgo2/">GitHub</a> - The
+RP2C02 PPU used in the NES.</p></li>
+</ul>
+
+<p>Once everything is implemented, I will create a fourth package called
+something clever like <code>nintengo</code> which combines <code>RP2A03</code> and <code>RP2C02</code>
+instances to form a full NES.</p>
+
+<p>Here&rsquo;s a diagram for how it all fits together:</p>
+
+<pre><code class="no-highlight">+---------------------+
+|       RP2A03        |
+| +-------+ +-------+ |
+| | M6502 | |  APU  | |
+| +-------+ +-------+ |
++---------------------+
+                |
+               /
+---Clock------*
+21.477272Mhz   \
+                |
++---------------------+
+|                     |
+|       RP2C02        |
+|                     |
++---------------------+
+</code></pre>
+
+<h2>Clock Divisors</h2>
+
+<p>The <code>rp2ago3</code> package must divide the 21.477272Mhz external clock
+signal by twelve internally to produce the 1.789773Mhz signal used by
+the M6502/APU chips.  To do this, I created a <code>Clocker</code> interface
+which implements the methods of <code>Clock</code>, the basic clock type I
+created for the <code>m65go2</code> package:</p>
+
+<pre><code class="go">// Represents a clock signal for an IC.  Once a Clock is started, it
+// maintains a 'ticks' counters which is incremented at a specific
+// interval.
+type Clocker interface {
+    // Returns the current value of the Clocker's ticks counter.
+    Ticks() uint64
+
+    // Starts the clock
+    Start() (ticks uint64)
+
+    // Stops the clock
+    Stop()
+
+    // Blocks the calling thread until the given tick has arrived.
+    // Returns immediately if the clock has already passed the
+    // given tick.
+    Await(tick uint64) (ticks uint64)
+}
+</code></pre>
+
+<p>Obviously, the base <code>Clock</code> type implements this interface.  Next, I
+created a <code>Divider</code> type which gets passed a <code>Clocker</code> instance and
+divisor on creation:</p>
+
+<pre><code class="go">// Returns a pointer to a new DividerCLock which divides the tick rate
+// of 'master' Clocker by 'divisor'.
+func NewDivider(master Clocker, divisor uint64) *Divider {
+    return &amp;Divider{divisor: divisor, master: master}
+}
+</code></pre>
+
+<p><code>Divider</code> implements its own version of <code>Start</code>, <code>Stop</code> and <code>Await</code>
+which use the base clock but ensure the module using a <code>Divider</code> will
+only see a tick after every Nth tick from the base clock:</p>
+
+<pre><code class="go">func (clock *Divider) Ticks() uint64 {
+    return clock.master.Ticks() / clock.divisor
+}
+
+func (clock *Divider) Start() (ticks uint64) {
+    return clock.master.Start() / clock.divisor
+}
+
+func (clock *Divider) Stop() {
+    clock.master.Stop()
+}
+
+func (clock *Divider) Await(tick uint64) (ticks uint64) {
+    return clock.master.Await(tick*clock.divisor) / clock.divisor
+}
+</code></pre>
+
+<p>When I create a new <code>RP2A03</code> instance, I create a <code>Divider</code> instance
+to divide the base clock passed into <code>NewRP2A03</code>:</p>
+
+<pre><code class="go">func NewRP2A03(mem *MappedMemory, clock m65go2.Clocker, divisor uint64) *RP2A03 {
+    ...
+    divider := m65go2.NewDivider(clock, divisor)
+    cpu := m65go2.NewM6502(mem, divider)
+    apu := NewAPU(divider)
+    ...
+    return &amp;RP2A03{memory: mem, M6502: cpu, APU: apu, clock: divider}
+}
+</code></pre>
+
+<h2>Memory Maps</h2>
+
+<p>I struggled for a while trying to figure how best to implement the
+memory mapped I/O used on the NES.  Since the MOS 6502 has no I/O
+lines into it, both the APU and PPU must map their internal registers
+into the 6502&rsquo;s address space.  The solution I wound up using is very
+simple, but seems to be working so far.</p>
+
+<p>The <code>m65go2</code> package defines the <code>Memory</code> interface:</p>
+
+<pre><code class="go">// Represents the RAM memory available to the 6502 CPU.  Stores 8-bit
+// values using a 16-bit address for a total of 65,536 possible 8-bit
+// values.
+type Memory interface {
+    Reset()                                             // Sets all memory locations to zero
+    Fetch(address uint16) (value uint8)                 // Returns the value stored at the given memory address
+    Store(address uint16, value uint8) (oldValue uint8) // Stores the value at the given memory address
+}
+</code></pre>
+
+<p>The <code>rp2ago3</code> package defines the <code>MappedMemory</code> type which implements
+the <code>Memory</code> interface:</p>
+
+<pre><code class="go">type MappedMemory struct {
+    maps map[uint16]m65go2.Memory
+    m65go2.Memory
+}
+</code></pre>
+
+<p>The second field <code>m65go2.Memory</code> does not have a name since it is an
+&ldquo;anonymous&rdquo; or &ldquo;embedded&rdquo; field in Go parlance.  When a field is
+declared without a name it is &ldquo;embedded&rdquo; meaning the new type
+automatically gains the functions implemented by the embedded type
+without the tedium of having to add a bunch of wrapper methods like
+this:</p>
+
+<pre><code class="go">func (parent MyParentType) myFunction() {
+        parent.embeddedField.myFunction()
+}
+</code></pre>
+
+<p>Since Go provides interfaces but not classes with the ability to
+extend an existing class, embedding gets you halfway there by letting
+you create a new type that automatically implements all methods (and
+therefore all interfaces) provided by the embedded type.</p>
+
+<p>Anyways, the <code>maps</code> field in the <code>MappedMemory</code> struct stores the
+addresses in memory which are mapped elsewhere.  For each mapped
+address, we store a <code>Memory</code> instance.  When <code>Fetch</code> or <code>Store</code> is
+called on the <code>MappedMemory</code> instance, we first check if the address
+is mapped to another <code>Memory</code> instance and pass it off, otherwise we
+call the appropriate method of the embedded <code>Memory</code> instance:</p>
+
+<pre><code class="go">func (mem *MappedMemory) Fetch(address uint16) (value uint8) {
+    if mmap, ok := mem.maps[address]; ok {
+        return mmap.Fetch(address)
+    }
+
+    return mem.Memory.Fetch(address)
+}
+
+func (mem *MappedMemory) Store(address uint16, value uint8) (oldValue uint8) {
+    if mmap, ok := mem.maps[address]; ok {
+        return mmap.Store(address, value)
+    }
+
+    return mem.Memory.Store(address, value)
+}
+</code></pre>
+
+<p>The end result is that when I create a new <code>RP2A03</code> CPU instance, I
+can map the APU&rsquo;s registers to the appropriate addresses in memory:</p>
+
+<pre><code class="go">func NewRP2A03(mem *MappedMemory, clock m65go2.Clocker, divisor uint64) *RP2A03 {
+    ...
+    apu := NewAPU(divider)
+
+    // APU memory maps
+    mem.AddMap([]uint16{
+        0x4000, 0x4001, 0x4002, 0x4003, 0x4004,
+        0x4005, 0x4006, 0x4007, 0x4008, 0x400a,
+        0x400b, 0x400c, 0x400e, 0x400f, 0x4010,
+        0x4011, 0x4012, 0x4013, 0x4015, 0x4017,
+    }, apu)
+
+    return &amp;RP2A03{memory: mem, M6502: cpu, APU: apu, clock: divider}
+}
+</code></pre>
+
+<p>Now, any <code>Fetch</code> or <code>Store</code> calls for those addresses will be
+redirected to the <code>Fetch</code> or <code>Store</code> methods implemented by <code>APU</code>.
+These methods know which addresses map to which registers,
+i.e. <code>0x4000-0x4003</code> maps to the pulse 1 channel registers.</p>
+
+<h2>Package Visibility</h2>
+
+<p>When I initially began work on the emulator, I had a single Go
+package.  Now that there are three separate packages I need to put
+more thought into what fields/symbols of a package are exported.  In
+Go, only exported fields/symbols are visible outside of a package.  Go
+really only has
+<a href="http://golang.org/ref/spec#Exported_identifiers">one rule</a> that
+determines what gets exported: capitalize it.</p>
+
+<pre><code class="go">type notExportedType struct { } // not exported
+type ExportedType struct { }    // exported
+
+type OtherExportedType struct {
+        ExportedInt     int     // exported
+        notExportedBool bool    // not exported
+}
+
+func notExportedFunc() { }      // not exported
+func ExportedFunction() { }     // exported
+</code></pre>
+
+<p>I spent some time going through the types I had created and modifying
+their fields/methods to be exported where I deemed appropriate.  Some
+obvious ones were exporting <code>M6502</code>&rsquo;s <code>Register</code> and <code>Memory</code> fields,
+since an external program trying to use the module would probably find
+it convenient to actually be able to read/write the CPU&rsquo;s registers
+and access its memory.</p>
+
+<h2>Decimal Mode</h2>
+
+<p>I&rsquo;m not sure why I felt the need to add decimal mode support to the
+<code>m65go2</code> package, but I added it for completeness anyways.  The MOS
+6502 supported an alternative form of addition/subtraction for the
+<code>ADC</code> (addition with carry) and <code>SBC</code> (subtraction with carry)
+instructions in which arguments are expected to be in packed binary
+coded decimal (BCD) form instead of the normal one&rsquo;s compliment
+representation.</p>
+
+<p>Under normal binary arithmetic, you would expect to get results like
+this:</p>
+
+<pre><code class="no-hightlight">0x45 + 0x25 = 0x6a
+</code></pre>
+
+<p>whereas if you&rsquo;re in decimal mode and using BCD values, you get
+results like this:</p>
+
+<pre><code class="no-hightlight">0x45 + 0x25 = 0x70
+</code></pre>
+
+<p>In decimal mode, the CPU interprets each argument as a byte
+representing a two digit number in base ten, where each digit is
+stored using 4-bits.</p>
+
+<p>I referenced <a href="http://www.piumarta.com/software/lib6502/">lib6502</a>&rsquo;s
+implementation of BCD arithmetic and relied on it pretty heavily to
+get things working.  Of course, there are probably plenty of bugs
+remaining.  But it doesn&rsquo;t matter too much since the RP2A03 CPU used
+in the NES didn&rsquo;t support decimal mode, apparently to
+<a href="https://en.wikipedia.org/wiki/Nintendo_Entertainment_System_technical_specifications#Central_processing_unit">avoid patent payments</a>.</p>
+
+<h2>NES Test ROM</h2>
+
+<p>In one of the previous posts I lamented not being able to get a test
+ROM running in my emulator.  I persevered and did eventually get the
+<code>nestest</code> test program from
+<a href="http://wiki.nesdev.com/w/index.php/Emulator_tests">this page</a> to run.
+I added it to the <code>m65go2</code> repository along with the expected output
+and
+<a href="https://github.com/nwidger/m65go2/blob/master/test-roms/nestest.txt">this text file</a>.
+From the file:</p>
+
+<pre><code class="no-highlight">This here is a pretty much all inclusive test suite for a NES CPU.
+It was designed to test almost every combination of flags, instructions,
+and registers. Some of these tests are very difficult, and so far,
+Nesten and Nesticle failed it. Nintendulator passes, as does a real
+NES (naturally). I haven't tested it with any more emualtors yet.
+</code></pre>
+
+<p>The only issue in using the test program was the question of how to
+validate it.  The file comes with
+<a href="https://github.com/nwidger/m65go2/blob/master/test-roms/nestest.log">the expected debug output from Nintendulator</a>,
+but it would be incredibly tedious to go through line by line and make
+sure my emulator places the same values in memory and modifies each
+register correctly for each instruction.  How can I integrate this
+test program into the rest of my <code>go test</code> unit tests?  The road I
+went down was replicating the debug output inside my emulator to match
+what Nintendulator produces.  For each instruction, Nintendulator
+prints a line like this:</p>
+
+<pre><code class="no-highlight">*- instruction address (PC register)
+|
+|     *- opcode + args
+|     |
+|     |         *- mneumonic + decoded args
+|     |         |
+|     |         |                               *- pre-execution registers
+|     |         |                               |
+C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD
+</code></pre>
+
+<p>After perhaps three days of work the emulator now produces the same
+output as Nintendulator, passes each test and implements all of the
+unofficial opcodes tested by the program.  In go, an &ldquo;example&rdquo; test
+function can be associated with an expected output that <code>go test</code> will
+verify when running the test.  I created an example test which runs
+the test program and put the Nintendulator log contents as the
+expected output.</p>
+
+<pre><code class="go">func ExampleRom() {
+    Setup()
+
+    cpu.DisableDecimalMode()
+
+    cpu.Registers.P = 0x24
+    cpu.Registers.SP = 0xfd
+    cpu.Registers.PC = 0xc000
+
+    cpu.Memory.(*BasicMemory).load(&quot;test-roms/nestest.nes&quot;)
+
+    cpu.Memory.Store(0x4004, 0xff)
+    cpu.Memory.Store(0x4005, 0xff)
+    cpu.Memory.Store(0x4006, 0xff)
+    cpu.Memory.Store(0x4007, 0xff)
+    cpu.Memory.Store(0x4015, 0xff)
+
+    cpu.decode.enabled = true
+
+    cpu.Run()
+
+    Teardown()
+
+    // Output:
+    // C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD
+    // C5F5  A2 00     LDX #$00                        A:00 X:00 Y:00 P:24 SP:FD
+    // C5F7  86 00     STX $00 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5F9  86 10     STX $10 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5FB  86 11     STX $11 = 00                    A:00 X:00 Y:00 P:26 SP:FD
+    // C5FD  20 2D C7  JSR $C72D                       A:00 X:00 Y:00 P:26 SP:FD
+    ...
+}
+</code></pre>
+
+<p>All the work was definitely worth as it makes me much more confident
+that most things are implemented correctly.</p>
+
+<h2>Up Next</h2>
+
+<p>Now that the CPU has been fairly well tested, it&rsquo;s time to move on.  I
+still need to implement the RP2C02, the PPU used in the NES, so that
+will be my next step.</p>
+
+
+          <p><small>Mon, Jan 20, 2014</small></p>
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Tags: 
+	        
+                <span class="label label-primary"><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/tags/go">go</a></span>
+	        
+                <span class="label label-primary"><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/tags/emulation">emulation</a></span>
+	        
+            </div>
+          </div>
+	  
+
+	  
+          <div class="panel panel-default">
+            <div class="panel-body">
+	        Categories:
+	        
+                <span class="label label-primary"><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/categories/programming">programming</a></span>
+	        
+            </div>
+          </div>
+	  
+
+          <ul class="pager">
+              
+              <li class="next"><a href="file:///Users/nwidger/Projects/nwidger.github.io/blog/Users/nwidger/Projects/nwidger.github.io/post/writing-an-nes-emulator-in-go-part-2/">Next &rarr;</a></li>
+          </ul>
+
+	  <div id="disqus_thread"></div>
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function() {
+  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+
+<script type="text/javascript">
+   
+  var disqus_shortname = 'nwidger'; 
+
+   
+  (function () {
+  var s = document.createElement('script'); s.async = true;
+  s.type = 'text/javascript';
+  s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+  (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+  }());
+</script>
+
+	  
+    </div>
+
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/jquery.js"></script>
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/lightbox.min.js"></script>
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/jquery-ui.min.js"></script>
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/jquery.tocify.min.js"></script>
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/bootstrap.min.js"></script>
+    <script src="file:///Users/nwidger/Projects/nwidger.github.io/blog/javascripts/highlight.pack.js"></script>
+  </body>
+</html>
+
+  </div>
+</div>
+
+<script>
+  $(function() {
+         
+         $("#toc").tocify({ selectors: 'h2,h3,h4,h5,h6', scrollTo: 50, hashGenerator: 'pretty' });
+
+         hljs.initHighlightingOnLoad();
+  });
+</script>

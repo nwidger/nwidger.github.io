@@ -2,7 +2,7 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
       <title>Emacs on nwidger </title>
-    <link>http://nwidger.github.io/categories/emacs.xml</link>
+    <link>file:///Users/nwidger/Projects/nwidger.github.io/categories/emacs.xml</link>
     <language>en-us</language>
     <author>Niels Widger</author>
     <rights>Copyright (c) 2013, Niels Widger; all rights reserved.</rights>
@@ -10,10 +10,10 @@
     
     <item>
       <title>Making a reveal.js presentation with org-reveal</title>
-      <link>http://nwidger.github.io/post/making-a-reveal.js-presentation-with-org-reveal/</link>
+      <link>file:///Users/nwidger/Projects/nwidger.github.io/post/making-a-reveal.js-presentation-with-org-reveal/</link>
       <pubDate>Thu, 19 Dec 2013 00:00:00 UTC</pubDate>
       <author>Niels Widger</author>
-      <guid>http://nwidger.github.io/post/making-a-reveal.js-presentation-with-org-reveal/</guid>
+      <guid>file:///Users/nwidger/Projects/nwidger.github.io/post/making-a-reveal.js-presentation-with-org-reveal/</guid>
       <description>&lt;p&gt;I&amp;rsquo;m currently working on putting together the presentation for my
 thesis defense and like all other things I wanted to put it together
 inside Emacs.  I had heard of
